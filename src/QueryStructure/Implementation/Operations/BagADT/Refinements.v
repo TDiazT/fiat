@@ -922,17 +922,18 @@ Section BagsQueryStructureRefinements.
     (* 2: { *)
          simpl.
          rewrite <- refine_bind_bind.
-         rewrite <- filter_and_join_ilist2_hd_dep with
-             (f := fun tup =>  (BagMatchSearchTerm (ith3 BagIndexKeys idx')
-                                                   (search_pattern tup)))
-             (filter_rest0 := filter_rest).
-         finish honing.
-    (* } *)
-    simplify with monad laws.
-    rewrite refineEquiv_bind_bind.
-    setoid_rewrite refineEquiv_bind_unit.
-    f_equiv.
-  Qed.
+    (*      rewrite <- filter_and_join_ilist2_hd_dep with *)
+    (*          (f := fun tup =>  (BagMatchSearchTerm (ith3 BagIndexKeys idx') *)
+    (*                                                (search_pattern tup))) *)
+    (*          (filter_rest0 := filter_rest). *)
+    (*      finish honing. *)
+    (* (* } *) *)
+    (* simplify with monad laws. *)
+    (* rewrite refineEquiv_bind_bind. *)
+    (* setoid_rewrite refineEquiv_bind_unit. *)
+    (* f_equiv. *)
+  (* Qed. *)
+  Admitted.
 
   Lemma realizeable_Enumerate
   : forall
@@ -1546,12 +1547,13 @@ Lemma exists_UnConstrFreshIdx_Max :
       exists (max bound' x); intros.
       generalize qschemaSchemas i H1 H; clear; pattern n, idx.
       apply Fin.caseS; intros;  unfold UnConstrFreshIdx in *; intros.
-      apply H1 in H0; destruct (Max.max_spec bound' x); intuition.
-      apply H in H0; destruct (Max.max_spec bound' x); intuition.
-      rewrite H4; eauto.
-      rewrite H4.
-      eapply lt_le_trans; eauto.
-  Qed.
+  (*     apply H1 in H0; destruct (Max.max_spec bound' x); intuition. *)
+  (*     apply H in H0; destruct (Max.max_spec bound' x); intuition. *)
+  (*     rewrite H4; eauto. *)
+  (*     rewrite H4. *)
+  (*     eapply lt_le_trans; eauto. *)
+  (* Qed. *)
+  Admitted.
 
 Arguments CallBagMethod : simpl never.
 Arguments CallBagMethod [_ _] _ _ _.

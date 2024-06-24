@@ -30,10 +30,7 @@ Rewrite Rules list_red_rew :=
   | _ => _
   end ==> @not_implemented (?P@{t0 := (@not_implemented (list ?A))}).
 
-Require Export Fiat.Common.Coq__8_4__8_5__Compat.
-Require Import Coq.Strings.Ascii
-        Coq.Bool.Bool
-        Coq.Lists.List.
+Require Import Tutorial.
 
 
 
@@ -168,161 +165,9 @@ Section ProdICP.
 
 End ProdICP.
 
-Export Coq.Vectors.Vector
-        Coq.Strings.Ascii
-        Coq.Bool.Bvector.
-
-Require Import Coq.Logic.Eqdep_dec
-        Fiat.ADT.ComputationalADT.
-        (* Fiat.ADTNotation.BuildComputationalADT. *)
-
-Export Coq.Logic.Eqdep_dec
-        Fiat.ADT.ComputationalADT.
-        (* Fiat.ADTNotation.BuildComputationalADT. *)
-
-Require Import Coq.Lists.List Coq.Arith.Arith
-        Fiat.Common Fiat.Computation Fiat.ADT.ADTSig Fiat.ADT.Core
-        Fiat.ADT.ComputationalADT
-        Fiat.Common.BoundedLookup
-        Fiat.Common.ilist
-        Fiat.Common.IterateBoundedIndex
-        Fiat.ADTNotation.BuildADTSig Fiat.ADTNotation.BuildADT
-        (* Fiat.ADTNotation.BuildComputationalADT *)
-        Fiat.ADTNotation.BuildADTReplaceMethods
-        Fiat.ADTRefinement.Core
-        Fiat.ADTRefinement.GeneralRefinements.
-
-Export Fiat.ADTNotation.BuildADTSig Fiat.ADTNotation.BuildADT.
-
-
-Export Lists.List.ListNotations.
-(* Require Import Tutorial. *)
-
-(* Ltac pick := erewrite refine_pick_val by eauto. *)
-(* Ltac pick_by H := erewrite refine_pick_val by (eapply H; eauto). *)
-
-(* Hint Resolve refine_pick_val. *)
-(* Hint Rewrite <- app_nil_end. *)
-
-(* Definition testnil A B (ls : list A) (cnil ccons : B) : B := *)
-(*   match ls with *)
-(*   | nil => cnil *)
-(*   | _ :: _ => ccons *)
-(*   end. *)
-
-(* There's a bug in the fold_heading code that is causes
-   Anomaly "Uncaught exception Not_found."
-   at Defined. Overwriting the following folding tactics solves this problem.
-*)
-(* Ltac fold_heading_hyps_in H ::= idtac. *)
-(* Ltac fold_heading_hyps  ::= idtac. *)
-
-(* Lemma refine_testnil : forall A (ls : list A) B (c1 cnil ccons : Comp B), *)
-(*   (ls = nil -> refine c1 cnil) *)
-(*   -> (ls <> nil -> refine c1 ccons) *)
-(*   -> refine c1 (testnil ls cnil ccons). *)
-(* Proof. *)
-(*   destruct ls; intuition congruence. *)
-(* Qed. *)
-
-(* Add Parametric Morphism A B R `{Equivalence (Comp B) R} *)
-(* : (@testnil A (Comp B)) *)
-(*     with signature *)
-(*     @eq (list A) *)
-(*       ==> @refine B B R *)
-(*       ==> @refine B B R *)
-(*       ==> @refine B B R *)
-(*       as refine_testnil_morphism. *)
-(* Proof. *)
-(*   destruct y; auto. *)
-(* Qed. *)
-
-(* Lemma refine_testnil_ret : forall A B (ls : list A) (cnil ccons : B), *)
-(*   refine (testnil ls (ret cnil) (ret ccons)) (ret (testnil ls cnil ccons)). *)
-(* Proof. *)
-(*   destruct ls; reflexivity. *)
-(* Qed. *)
-
-(* Ltac refine_testnil ls' := etransitivity; [ apply refine_testnil with (ls := ls'); intro | ]. *)
-
-(* Definition let_ A B (v : A) (f : A -> B) := let x := v in f v. *)
-
-(* Add Parametric Morphism A B *)
-(* : (@let_ A (Comp B)) *)
-(*     with signature *)
-(*     @eq A *)
-(*       ==> pointwise_relation _ (@refine B) *)
-(*       ==> @refine B *)
-(*       as refine_let_morphism. *)
-(* Proof. *)
-(*   unfold pointwise_relation, let_; auto. *)
-(* Qed. *)
-
-(* Lemma refine_let : forall A B (v : A) c1 (c2 : A -> Comp B), *)
-(*   (forall x, x = v -> refine c1 (c2 x)) *)
-(*   -> refine c1 (let_ v c2). *)
-(* Proof. *)
-(*   unfold let_; auto. *)
-(* Qed. *)
-
-(* Ltac refine_let x := apply (refine_let (v := x)); intros. *)
-
-(* Lemma refine_let_ret : forall A B (v : A) (f : A -> B), *)
-(*   let_ v (fun x => ret (f x)) =  ret (let_ v f). *)
-(* Proof. *)
-(*   reflexivity. *)
-(* Qed. *)
-
-(* Ltac monad_simpl := autosetoid_rewrite with refine_monad; *)
-(*                    try simplify_with_applied_monad_laws; simpl. *)
-
-(* Hint Rewrite refine_let_ret refine_testnil_ret : cleanup. *)
-
-(* Global Opaque let_. *)
-
-(* Ltac done := try match goal with *)
-(*                  | [ |- refine ?a ?b ] => is_evar b; instantiate (1 := a) *)
-(*                  end; finish honing. *)
-(* Ltac cleanup := autorewrite with cleanup. *)
-(* Ltac finalize := finish_SharpeningADT_WithoutDelegation. *)
-
-(* Lemma tl_cons : forall A (x : A) ls1 ls2, *)
-(*   x :: ls1 = ls2 *)
-(*   -> ls1 = tl ls2. *)
-(* Proof. *)
-(*   destruct ls2; simpl; congruence. *)
-(* Qed. *)
-
-(* Hint Resolve tl_cons. *)
-
-(* Lemma appendone_contra : forall A (ls : list A) x, ls ++ x :: nil = nil *)
-(*   -> False. *)
-(* Proof. *)
-(*   intros. *)
-(*   apply (f_equal (@length _)) in H. *)
-(*   rewrite app_length in H. *)
-(*   simpl in *; omega. *)
-(* Qed. *)
-
-(* Hint Immediate appendone_contra. *)
-
-Reserved Infix "⊑o" (at level 10).
-Inductive refinement_option {A} `{Refinable A} : option A -> option A -> Prop :=
-| refinement_none : None ⊑o None
-| refinement_some : forall a1 a2, a1 ⊑ a2 -> Some a1 ⊑o (Some a2)
-| refinement_nimpl : forall o, o ⊑o ?
-where "o1 ⊑o o2" := (refinement_option o1 o2).
-
-#[local]
-  Program Instance refinableOption {A} `{Refinable A} : Refinable (option A) := {
-    refinement := refinement_option
-  }.
-Admit Obligations.
-
 Section data.
   Variable data : Set.
 
-  (* TODO: Change *)
   Instance : Refinable data := mkEqRefinable data.
   Instance : Complete data := mkCompleteTrue data.
   Instance : Ground data := mkGroundTrue data.
@@ -341,11 +186,6 @@ Section data.
   (* Notice that "effectful" methods just return new private-state values,
    * in addition to being passed original state values as parameters. *)
 
-
-  (* Open Scope ADT. *)
-  Open Scope ADTParsing.
-  Open Scope methDefParsing.
-
   (** The specification of functional correctness *)
   Definition spec : ADT sig :=
     Def ADT
@@ -356,7 +196,7 @@ Section data.
       Def Constructor0 "empty" : rep :=
         ret nil,,
       Def Method1 "enqueue" (self : rep) (d : data) : rep :=
-        ret (self ++ d :: nil),
+            ret (?),
       Def Method0 "dequeue"(self : rep) : rep * (option data) :=
         match self with
         | nil => ret (self, None)
@@ -482,9 +322,8 @@ Section data.
     -> absRel (tl abs) (tl r, nil).
   Proof.
     unfold absRel; intuition simpl in *; subst.
-  (*   autorewrite with core; auto. *)
-  (* Qed. *)
-  Admitted.
+    autorewrite with core; auto.
+  Qed.
 
   (* The case for returning the right data value on "pop",
    * when we need to reverse the second list. *)
@@ -531,43 +370,26 @@ Inductive IsCons A : list A -> Prop :=
 | IsConsCons : forall hd tl, IsCons (hd :: tl).
 
 
-(* Lemma refine_testnil : forall A (ls : list A) B (c1 cnil ccons : Comp B), *)
-(* (* Lemma refine_testnil : forall A (ls : list A) dummy B (c1 cnil ccons cnimpl : Comp B), *) *)
-(*     (* Should have cnil and catch tbh *) *)
-(*   (ls = nil -> refine c1 cnil) *)
-(*   -> (IsCons ls -> refine c1 ccons) *)
-(*   -> (ls = ? -> refine c1 ?) *)
-(*   -> refine c1 (testnil ls cnil ccons). *)
-(* Proof. *)
-(*   intros ? ls. *)
-(*   induction ls as [| hd tl IH|] using list_catch; intros; try intuition congruence. *)
-(*   - simpl. apply H0. constructor. *)
-(*   (* try intuition congruence. *) *)
-(*   (* destruct ls; intuition congruence. *) *)
-(* (* Qed. *) *)
-(* Admitted. *)
+Lemma refine_testnil : forall A (ls : list A) B (c1 cnil ccons : Comp B),
+(* Lemma refine_testnil : forall A (ls : list A) dummy B (c1 cnil ccons cnimpl : Comp B), *)
+    (* Should have cnil and catch tbh *)
+  (ls = nil -> refine c1 cnil)
+  -> (IsCons ls -> refine c1 ccons)
+  -> (ls = ? -> refine c1 ?)
+  -> refine c1 (testnil ls cnil ccons).
+Proof.
+  intros ? ls.
+  induction ls as [| hd tl IH|] using list_catch; intros; try intuition congruence.
+  - simpl. apply H0. constructor.
+  (* try intuition congruence. *)
+  (* destruct ls; intuition congruence. *)
+(* Qed. *)
+Admitted.
 
-(* Ltac refine_testnil ls' := etransitivity; [ apply refine_testnil with (ls := ls') ; intro | ]. *)
+Ltac refine_testnil ls' := etransitivity; [ apply refine_testnil with (ls := ls') ; intro | ].
 
-Definition RSig : forall (idx : MethodIndex sig), Core.RCod (snd (MethodDomCod sig idx) ) .
-  simpl. intros idx.
-  (* induction idx. *)
-  (* dependent induction idx. *)
-  dependent destruction idx.
-  - simpl. exact tt.
-  - simpl.
-    dependent destruction idx.
-    2: inversion idx.
-    simpl.
-    exact refinableOption.(refinement).
-Defined.
-
-
-Require Import
-        Fiat.ADTRefinement.BuildADTRefinements.HoneRepresentation.
-        (* Fiat.ADTNotation.BuildComputationalADT *)
   (* Now we start deriving an implementation, in a correct-by-construction way. *)
-  Theorem implementation : FullySharpened spec RSig.
+  Theorem implementation : FullySharpened spec.
   Proof.
     start sharpening ADT.
     hone representation using absRel_mono.
@@ -870,7 +692,3 @@ Require Import
     finalize.
   Defined.
 End data.
-
-(* Local Variables: *)
-(* coq-prog-args: ("-emacs" "-native-compiler" "no" "-require" "Coq.Compat.AdmitAxiom" "-require-import" "Coq.Compat.AdmitAxiom" "-w" "unsupported-attributes" "-allow-rewrite-rules") *)
-(* End: *)

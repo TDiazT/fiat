@@ -1,4 +1,7 @@
-@META@
+-arg "-native-compiler no"
+-arg "-require Coq.Compat.AdmitAxiom"
+-arg "-require-import Coq.Compat.AdmitAxiom"
+META.coq-fiat-parsers
 -R src Fiat
 -R Bedrock Bedrock
 -I src/Common/Tactics
@@ -286,7 +289,6 @@ src/Examples/Smtp/Smtp.v
 src/Examples/Tutorial/BookstoreMoreManual.v
 src/Examples/Tutorial/NotInList.v
 src/Examples/Tutorial/NotInList_template.v
-src/Examples/Tutorial/Refinement.v
 src/Examples/Tutorial/Queue.v
 src/Examples/Tutorial/Queue_template.v
 src/Examples/Tutorial/Tutorial.v
@@ -685,9 +687,9 @@ src/QueryStructure/Specification/SearchTerms/ListPrefix.v
 src/Common/Coq__8_4__8_5__Compat.v
 src/Common/Tactics/HintDbExtra.v
 src/Common/Tactics/TransparentAbstract.v
-src/Common/Tactics/hint_db_extra_plugin.@ML4_OR_MLG@
+src/Common/Tactics/hint_db_extra_plugin.mlg
 src/Common/Tactics/hint_db_extra_plugin.mllib
 src/Common/Tactics/hint_db_extra_tactics.ml
-src/Common/Tactics/transparent_abstract_plugin.@ML4_OR_MLG@
+src/Common/Tactics/transparent_abstract_plugin.mlg
 src/Common/Tactics/transparent_abstract_plugin.mllib
 src/Common/Tactics/transparent_abstract_tactics.ml

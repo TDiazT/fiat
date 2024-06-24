@@ -119,19 +119,30 @@ Qed.
 (** The old program might be non-deterministic, and the new program
       less so.  This means we want to say that if [new] can compute to
       [v], then [old] should be able to compute to [v], too. *)
-Definition refine {A}
+Definition refine {A B} (R : Comp A -> Comp B -> Prop )
+           (old : Comp A)
+           (new : Comp B)
+  := R old new.
+
+Definition refineR {A B} (R : A -> B -> Prop )
+           (old : Comp A)
+           (new : Comp B)
+  := forall v, new ↝ v -> exists v', old ↝ v' /\ R v' v.
+
+Definition refineEq {A}
            (old : Comp A)
            (new : Comp A)
   := forall v, new ↝ v -> old ↝ v.
 
+
 (* A definition and notation for pretty printing the goals used to
    interactively deriving refinements. *)
 
-Definition Refinement_Of {A} (c : Comp A) :=
-  {c' | refine c c'}.
+Definition Refinement_Of {A} (R : Comp A -> Comp A -> Prop) (c : Comp A) :=
+  {c' | refine R c c'}.
 
 Notation "'Refinement' 'of' c" :=
-  {c' | refine c c'}
+  {c' | refine eq c c'}
     (at level 0, no associativity,
      format "'Refinement'  'of' '/' '[v'    c ']' " )
   : comp_scope.
@@ -140,7 +151,8 @@ Notation "'Refinement' 'of' c" :=
 Definition refineEquiv {A}
            (old : Comp A)
            (new : Comp A)
-  := refine old new /\ refine new old.
+  := refineEq  old new /\ refineEq new old.
+
 
 Local Ltac t := repeat first [ solve [ unfold computes_to in *; eauto ]
                                         | progress hnf in *
@@ -148,13 +160,14 @@ Local Ltac t := repeat first [ solve [ unfold computes_to in *; eauto ]
                                         | split
                                         | progress split_and ].
 
-Global Instance refine_PreOrder A : PreOrder (@refine A).
-t.
-Qed.
+Global Instance refine_PreOrder A (R : Comp A -> Comp A -> Prop) `{PreOrder (Comp A) R} : PreOrder (@refine A A R).
+Proof. t. Qed.
+
+Global Instance refineEq_PreOrder A (R : Comp A -> Comp A -> Prop) : PreOrder (@refineEq A).
+Proof. t. Qed.
 
 Global Instance refineEquiv_Equivalence A : Equivalence (@refineEquiv A).
-t.
-Qed.
+Proof. t. Qed.
 
 Global Opaque Return.
 Global Opaque Bind.

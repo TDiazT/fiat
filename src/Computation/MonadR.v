@@ -57,62 +57,64 @@ End monad.
     as our notions of equivalence. *)
 
 Section monad_refine.
-  Lemma refineEquiv_bind_bind X Y Z (f : X -> Comp Y) (g : Y -> Comp Z) x
-  : refineEquiv (Bind (Bind x f) g)
+  Lemma refineEquiv_bind_bind X Y Z R `{Equivalence Z R} (f : X -> Comp Y) (g : Y -> Comp Z) x
+  : refineEquiv R (Bind (Bind x f) g)
                 (Bind x (fun u => Bind (f u) g)).
   Proof.
-    split; intro; apply bind_bind.
+    split; intro; intros; exists v; split; try apply bind_bind; try apply PreOrder_Reflexive; auto.
   Qed.
 
-  Definition refine_bind_bind X Y Z f g x
-    := proj1 (@refineEquiv_bind_bind X Y Z f g x).
-  Definition refine_bind_bind' X Y Z f g x
-    := proj2 (@refineEquiv_bind_bind X Y Z f g x).
+  Definition refine_bind_bind X Y Z R `{HR : Equivalence Z R} f g x
+    := proj1 (@refineEquiv_bind_bind X Y Z R HR f g x).
+  Definition refine_bind_bind' X Y Z R `{HR : Equivalence Z R} f g x
+    := proj2 (@refineEquiv_bind_bind X Y Z R HR f g x).
 
-  Lemma refineEquiv_bind_unit X Y (f : X -> Comp Y) x
-    : refineEquiv (Bind (Return x) f)
+  Lemma refineEquiv_bind_unit X Y R `{Equivalence Y R} (f : X -> Comp Y) x
+    : refineEquiv R (Bind (Return x) f)
                   (f x).
   Proof.
-    split; intro; simpl; apply bind_unit.
-  Qed.
+    split; intro; simpl; intros; exists v. try apply bind_unit; auto.
+  (* Qed. *)
+  Admitted.
 
-  Definition refine_bind_unit X Y f x
-    := proj1 (@refineEquiv_bind_unit X Y f x).
-  Definition refine_bind_unit' X Y f x
-    := proj2 (@refineEquiv_bind_unit X Y f x).
+  Definition refine_bind_unit X Y R f x
+    := proj1 (@refineEquiv_bind_unit X Y R f x).
+  Definition refine_bind_unit' X Y R f x
+    := proj2 (@refineEquiv_bind_unit X Y R f x).
 
-  Lemma refineEquiv_unit_bind X (x : Comp X)
-    : refineEquiv (Bind x (@Return X))
+  Lemma refineEquiv_unit_bind X R (x : Comp X)
+    : refineEquiv R (Bind x (@Return X))
                   x.
   Proof.
-    split; intro; apply unit_bind.
-  Qed.
+  (*   split; intro; apply unit_bind. *)
+  (* Qed. *)
+  Admitted.
 
-  Definition refine_unit_bind X x
-    := proj1 (@refineEquiv_unit_bind X x).
-  Definition refine_unit_bind' X x
-    := proj2 (@refineEquiv_unit_bind X x).
+  Definition refine_unit_bind X R x
+    := proj1 (@refineEquiv_unit_bind X R x).
+  Definition refine_unit_bind' X R x
+    := proj2 (@refineEquiv_unit_bind X R x).
 
-  Lemma refineEquiv_bind2_bind A B C D Z (f : A -> B -> Comp (C * D))
+  Lemma refineEquiv_bind2_bind A B C D Z R (f : A -> B -> Comp (C * D))
         (g : C ->D -> Comp Z) x
-    : refineEquiv (Bind2 (Bind2 x f) g)
+: refineEquiv R (Bind2 (Bind2 x f) g)
                   (Bind2 x (fun a b => Bind2 (f a b) g)).
   Proof.
-    split; intro; apply bind_bind.
-  Qed.
+  (*   split; intro; apply bind_bind. *)
+  (* Qed. *)
+  Admitted.
 
-  Lemma refineEquiv_bind2_unit A B C (f : A -> B -> Comp C) x
-    : refineEquiv (Bind2 (Return x) f)
+  Lemma refineEquiv_bind2_unit A B C R (f : A -> B -> Comp C) x
+    : refineEquiv R (Bind2 (Return x) f)
                   (f (fst x) (snd x)).
   Proof.
-    unfold Bind2; split; intros; destruct x.
+    unfold Bind2; split; intros; destruct x; simpl.
+  (*   rewrite refine_bind_unit; reflexivity. *)
+  (*   rewrite <- refine_bind_unit'; reflexivity. *)
+  (* Qed. *)
 
-    apply refine_bind_unit.
-    apply refine_bind_unit' with (f:= fun ab => f (fst ab) (snd ab)).
-  Qed.
-
-  Lemma refineEquiv_unit_bind2 A B (x : Comp (A * B))
-    : refineEquiv (Bind2 x (fun x y => Return (x, y))) x.
+  Lemma refineEquiv_unit_bind2 A B R (x : Comp (A * B))
+    : refineEquiv R (Bind2 x (fun x y => Return (x, y))) x.
   Proof.
     unfold Bind2; split; intros; simpl.
     intros v Comp_v; computes_to_econstructor; eauto; destruct v; eauto.

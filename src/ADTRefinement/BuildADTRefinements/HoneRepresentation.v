@@ -6,11 +6,11 @@ Require Import Coq.Lists.List Fiat.Common
         Fiat.ADT.Core
         Fiat.ADTNotation.BuildADTSig
         Fiat.ADTNotation.BuildADT
-        Fiat.ADTRefinement.Core Fiat.ADTRefinement.SetoidMorphisms
+        (* Fiat.ADTRefinement.Core Fiat.ADTRefinement.SetoidMorphisms *)
         Fiat.ADTRefinement.GeneralRefinements
         Fiat.ADTRefinement.GeneralBuildADTRefinements
-        Fiat.ADTRefinement.Refinements.HoneRepresentation
-        Fiat.ADTRefinement.BuildADTSetoidMorphisms.
+        Fiat.ADTRefinement.Refinements.HoneRepresentation.
+        (* Fiat.ADTRefinement.BuildADTSetoidMorphisms. *)
 
 (* A generic refinement and honing tactic for switching the
     representation of an ADT built from [BuildADT]. *)

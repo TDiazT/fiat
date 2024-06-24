@@ -30,10 +30,7 @@ Rewrite Rules list_red_rew :=
   | _ => _
   end ==> @not_implemented (?P@{t0 := (@not_implemented (list ?A))}).
 
-Require Export Fiat.Common.Coq__8_4__8_5__Compat.
-Require Import Coq.Strings.Ascii
-        Coq.Bool.Bool
-        Coq.Lists.List.
+Require Import Tutorial.
 
 
 
@@ -168,161 +165,9 @@ Section ProdICP.
 
 End ProdICP.
 
-Export Coq.Vectors.Vector
-        Coq.Strings.Ascii
-        Coq.Bool.Bvector.
-
-Require Import Coq.Logic.Eqdep_dec
-        Fiat.ADT.ComputationalADT.
-        (* Fiat.ADTNotation.BuildComputationalADT. *)
-
-Export Coq.Logic.Eqdep_dec
-        Fiat.ADT.ComputationalADT.
-        (* Fiat.ADTNotation.BuildComputationalADT. *)
-
-Require Import Coq.Lists.List Coq.Arith.Arith
-        Fiat.Common Fiat.Computation Fiat.ADT.ADTSig Fiat.ADT.Core
-        Fiat.ADT.ComputationalADT
-        Fiat.Common.BoundedLookup
-        Fiat.Common.ilist
-        Fiat.Common.IterateBoundedIndex
-        Fiat.ADTNotation.BuildADTSig Fiat.ADTNotation.BuildADT
-        (* Fiat.ADTNotation.BuildComputationalADT *)
-        Fiat.ADTNotation.BuildADTReplaceMethods
-        Fiat.ADTRefinement.Core
-        Fiat.ADTRefinement.GeneralRefinements.
-
-Export Fiat.ADTNotation.BuildADTSig Fiat.ADTNotation.BuildADT.
-
-
-Export Lists.List.ListNotations.
-(* Require Import Tutorial. *)
-
-(* Ltac pick := erewrite refine_pick_val by eauto. *)
-(* Ltac pick_by H := erewrite refine_pick_val by (eapply H; eauto). *)
-
-(* Hint Resolve refine_pick_val. *)
-(* Hint Rewrite <- app_nil_end. *)
-
-(* Definition testnil A B (ls : list A) (cnil ccons : B) : B := *)
-(*   match ls with *)
-(*   | nil => cnil *)
-(*   | _ :: _ => ccons *)
-(*   end. *)
-
-(* There's a bug in the fold_heading code that is causes
-   Anomaly "Uncaught exception Not_found."
-   at Defined. Overwriting the following folding tactics solves this problem.
-*)
-(* Ltac fold_heading_hyps_in H ::= idtac. *)
-(* Ltac fold_heading_hyps  ::= idtac. *)
-
-(* Lemma refine_testnil : forall A (ls : list A) B (c1 cnil ccons : Comp B), *)
-(*   (ls = nil -> refine c1 cnil) *)
-(*   -> (ls <> nil -> refine c1 ccons) *)
-(*   -> refine c1 (testnil ls cnil ccons). *)
-(* Proof. *)
-(*   destruct ls; intuition congruence. *)
-(* Qed. *)
-
-(* Add Parametric Morphism A B R `{Equivalence (Comp B) R} *)
-(* : (@testnil A (Comp B)) *)
-(*     with signature *)
-(*     @eq (list A) *)
-(*       ==> @refine B B R *)
-(*       ==> @refine B B R *)
-(*       ==> @refine B B R *)
-(*       as refine_testnil_morphism. *)
-(* Proof. *)
-(*   destruct y; auto. *)
-(* Qed. *)
-
-(* Lemma refine_testnil_ret : forall A B (ls : list A) (cnil ccons : B), *)
-(*   refine (testnil ls (ret cnil) (ret ccons)) (ret (testnil ls cnil ccons)). *)
-(* Proof. *)
-(*   destruct ls; reflexivity. *)
-(* Qed. *)
-
-(* Ltac refine_testnil ls' := etransitivity; [ apply refine_testnil with (ls := ls'); intro | ]. *)
-
-(* Definition let_ A B (v : A) (f : A -> B) := let x := v in f v. *)
-
-(* Add Parametric Morphism A B *)
-(* : (@let_ A (Comp B)) *)
-(*     with signature *)
-(*     @eq A *)
-(*       ==> pointwise_relation _ (@refine B) *)
-(*       ==> @refine B *)
-(*       as refine_let_morphism. *)
-(* Proof. *)
-(*   unfold pointwise_relation, let_; auto. *)
-(* Qed. *)
-
-(* Lemma refine_let : forall A B (v : A) c1 (c2 : A -> Comp B), *)
-(*   (forall x, x = v -> refine c1 (c2 x)) *)
-(*   -> refine c1 (let_ v c2). *)
-(* Proof. *)
-(*   unfold let_; auto. *)
-(* Qed. *)
-
-(* Ltac refine_let x := apply (refine_let (v := x)); intros. *)
-
-(* Lemma refine_let_ret : forall A B (v : A) (f : A -> B), *)
-(*   let_ v (fun x => ret (f x)) =  ret (let_ v f). *)
-(* Proof. *)
-(*   reflexivity. *)
-(* Qed. *)
-
-(* Ltac monad_simpl := autosetoid_rewrite with refine_monad; *)
-(*                    try simplify_with_applied_monad_laws; simpl. *)
-
-(* Hint Rewrite refine_let_ret refine_testnil_ret : cleanup. *)
-
-(* Global Opaque let_. *)
-
-(* Ltac done := try match goal with *)
-(*                  | [ |- refine ?a ?b ] => is_evar b; instantiate (1 := a) *)
-(*                  end; finish honing. *)
-(* Ltac cleanup := autorewrite with cleanup. *)
-(* Ltac finalize := finish_SharpeningADT_WithoutDelegation. *)
-
-(* Lemma tl_cons : forall A (x : A) ls1 ls2, *)
-(*   x :: ls1 = ls2 *)
-(*   -> ls1 = tl ls2. *)
-(* Proof. *)
-(*   destruct ls2; simpl; congruence. *)
-(* Qed. *)
-
-(* Hint Resolve tl_cons. *)
-
-(* Lemma appendone_contra : forall A (ls : list A) x, ls ++ x :: nil = nil *)
-(*   -> False. *)
-(* Proof. *)
-(*   intros. *)
-(*   apply (f_equal (@length _)) in H. *)
-(*   rewrite app_length in H. *)
-(*   simpl in *; omega. *)
-(* Qed. *)
-
-(* Hint Immediate appendone_contra. *)
-
-Reserved Infix "⊑o" (at level 10).
-Inductive refinement_option {A} `{Refinable A} : option A -> option A -> Prop :=
-| refinement_none : None ⊑o None
-| refinement_some : forall a1 a2, a1 ⊑ a2 -> Some a1 ⊑o (Some a2)
-| refinement_nimpl : forall o, o ⊑o ?
-where "o1 ⊑o o2" := (refinement_option o1 o2).
-
-#[local]
-  Program Instance refinableOption {A} `{Refinable A} : Refinable (option A) := {
-    refinement := refinement_option
-  }.
-Admit Obligations.
-
 Section data.
   Variable data : Set.
 
-  (* TODO: Change *)
   Instance : Refinable data := mkEqRefinable data.
   Instance : Complete data := mkCompleteTrue data.
   Instance : Ground data := mkGroundTrue data.
@@ -341,11 +186,6 @@ Section data.
   (* Notice that "effectful" methods just return new private-state values,
    * in addition to being passed original state values as parameters. *)
 
-
-  (* Open Scope ADT. *)
-  Open Scope ADTParsing.
-  Open Scope methDefParsing.
-
   (** The specification of functional correctness *)
   Definition spec : ADT sig :=
     Def ADT
@@ -356,38 +196,29 @@ Section data.
       Def Constructor0 "empty" : rep :=
         ret nil,,
       Def Method1 "enqueue" (self : rep) (d : data) : rep :=
-        ret (self ++ d :: nil),
+            ret ?,
       Def Method0 "dequeue"(self : rep) : rep * (option data) :=
-        match self with
-        | nil => ret (self, None)
-        | d :: self' => ret (self', Some d)
-        end
+              (* should be ? the returned value *)
+              ret (?, None)
     }.
 
   (* We define an abstraction relation, connecting abstract and concrete states.
    * Classic trick: simulate a queue with two stacks,
    * one of which needs to be reversed to reproduce the abstract queue. *)
-  Definition absRel (abs : list data) (conc : list data * list data) :=
+  Definition absRel_stm  (conc : list data * list data) (abs : list data):=
       abs = fst conc ++ rev (snd conc).
 
+  Definition absRel abs conc := absRel_stm conc abs.
 
-  Instance mono_absRel : forall abs, Monotonizable (absRel abs) .
-    unfold absRel.
-    intros abs.
-    eapply monotonizableEqR.
-    unfold_complete; split.
-    - unfold_refinement; split; intros l1 l2 Hprec.
-      * apply app_ref. apply fst_ref; auto.
-        apply rev_ref. apply snd_ref; auto.
-      * apply app_ref. apply fst_ref; auto.
-        apply rev_ref. apply snd_ref; auto.
-    - intros. apply is_complete_app.
-      apply is_complete_fst; auto.
-      apply is_complete_rev. apply is_complete_snd; auto.
+  Instance mono_absRel : forall conc, Monotonizable (absRel_stm conc) .
+    intros conc.
+    eapply monotonizableEqL.
+    unfold_complete; split; auto.
+    unfold_refinement; split; auto.
   Defined.
 
   Definition absRel_mono (abs : list data) (conc : list data * list data) :=
-    (monotone (absRel abs)) conc.
+    (monotone (absRel_stm conc)) abs.
 
   Lemma list_data_refl : forall l : list data,
       l ⊑ l.
@@ -411,26 +242,18 @@ Section data.
     reflexivity.
   Qed.
 
+  Lemma absRel_nil_nimpl : absRel_mono ? (nil, nil).
+  Proof. constructor. Qed.
+
   (* The simple implementation of "push" preserves the relation. *)
   Lemma absRel_push : forall d abs conc, absRel_mono abs conc
-    -> absRel_mono (abs ++ d :: nil) (fst conc, ?).
+    -> absRel_mono ? (fst conc, d :: snd conc).
   Proof.
-    unfold absRel_mono; simpl; intros; subst.
-    cbn.
-    assert (Heq : ? = ? ++ [d]) by reflexivity.
-    rewrite Heq.
-    rewrite app_assoc.
-    apply app_ref.
-    - etransitivity. apply H.
-      apply app_ref.
-      * eapply app_ref_refl_inv_l.
-        eapply is_right_reflexive.
-        apply H.
-      * constructor.
-    - constructor.
-      * reflexivity.
-      * constructor.
+    constructor.
   Qed.
+
+  Lemma absRel_push_nimpl : absRel_mono ? (?, ?).
+  Proof. constructor. Qed.
 
 
   (* When the concrete state is empty, so must be the abstract state. *)
@@ -453,9 +276,10 @@ Section data.
     -> fst conc <> nil
     -> abs = hd dummy abs :: tl abs.
   Proof.
-    unfold absRel; destruct abs; simpl; intuition.
-    destruct (fst conc); simpl in *; intuition congruence.
-  Qed.
+  (*   unfold absRel; destruct abs; simpl; intuition. *)
+  (*   destruct (fst conc); simpl in *; intuition congruence. *)
+  (* Qed. *)
+  Admitted.
 
   (* The abstract queue may be expanded into its first element and tail,
    * if it's related to a concrete state with nonempty second list. *)
@@ -464,13 +288,14 @@ Section data.
     -> snd conc = hd dummy (snd conc) :: tl (snd conc)
     -> abs = hd dummy abs :: tl abs.
   Proof.
-    unfold absRel; destruct abs; simpl; intros.
-    destruct (snd conc); simpl in *; intuition.
-    apply (f_equal (@length _)) in H.
-    repeat rewrite app_length in H; simpl in H.
-    omega.
-    auto.
-  Qed.
+  (*   unfold absRel; destruct abs; simpl; intros. *)
+  (*   destruct (snd conc); simpl in *; intuition. *)
+  (*   apply (f_equal (@length _)) in H. *)
+  (*   repeat rewrite app_length in H; simpl in H. *)
+  (*   omega. *)
+  (*   auto. *)
+  (* Qed. *)
+  Admitted.
 
   (* The case for preserving the relation on "pop",
    * when we need to reverse the second list. *)
@@ -481,10 +306,10 @@ Section data.
     -> r = rev (snd conc)
     -> absRel (tl abs) (tl r, nil).
   Proof.
-    unfold absRel; intuition simpl in *; subst.
+  (*   unfold absRel; intuition simpl in *; subst. *)
   (*   autorewrite with core; auto. *)
   (* Qed. *)
-  Admitted.
+Admitted.
 
   (* The case for returning the right data value on "pop",
    * when we need to reverse the second list. *)
@@ -496,18 +321,28 @@ Section data.
     -> hd dummy abs = hd dummy r.
   Proof.
     unfold absRel; intuition simpl in *; subst; auto.
-  Qed.
+  (* Qed. *)
+Admitted.
 
   (* The case for preserving the relation on "pop",
    * in the fast path where the first list is not empty. *)
-  Lemma absRel_fast_rep : forall abs conc,
-    absRel abs conc
-    -> fst conc <> nil
-    -> absRel (tl abs) (tl (fst conc), snd conc).
+
+  Lemma absRel_fast_rep_mono : forall conc,
+    absRel_mono ? (tl (fst conc), snd conc).
   Proof.
-    unfold absRel; intuition simpl in *; subst.
-    destruct (fst conc); simpl in *; tauto.
+    constructor.
   Qed.
+
+  (* Lemma absRel_fast_rep_mono : forall abs conc, *)
+  (*   absRel_mono abs conc *)
+  (*   -> fst conc <> nil *)
+  (*   -> absRel_mono (tl abs) (tl (fst conc), snd conc). *)
+  (* Proof. *)
+  (*   unfold absRel_mono; intuition simpl in *; subst. *)
+  (*   admit. *)
+  (* (*   destruct (fst conc); simpl in *; tauto. *) *)
+  (*   Qed. *)
+  (* Admitted. *)
 
   (* The case for returning the right data value on "pop",
    * in the fast path where the first list is not empty. *)
@@ -517,8 +352,9 @@ Section data.
     -> hd dummy abs = hd dummy (fst conc).
   Proof.
     unfold absRel; intuition simpl in *; subst; auto.
-    destruct (fst conc); simpl in *; tauto.
-  Qed.
+  (*   destruct (fst conc); simpl in *; tauto. *)
+  (* Qed. *)
+    Admitted.
 
 Definition testnil A B (ls : list A) (cnil ccons : B) : B :=
   (* this should be a catch *)
@@ -549,25 +385,8 @@ Inductive IsCons A : list A -> Prop :=
 
 (* Ltac refine_testnil ls' := etransitivity; [ apply refine_testnil with (ls := ls') ; intro | ]. *)
 
-Definition RSig : forall (idx : MethodIndex sig), Core.RCod (snd (MethodDomCod sig idx) ) .
-  simpl. intros idx.
-  (* induction idx. *)
-  (* dependent induction idx. *)
-  dependent destruction idx.
-  - simpl. exact tt.
-  - simpl.
-    dependent destruction idx.
-    2: inversion idx.
-    simpl.
-    exact refinableOption.(refinement).
-Defined.
-
-
-Require Import
-        Fiat.ADTRefinement.BuildADTRefinements.HoneRepresentation.
-        (* Fiat.ADTNotation.BuildComputationalADT *)
   (* Now we start deriving an implementation, in a correct-by-construction way. *)
-  Theorem implementation : FullySharpened spec RSig.
+  Theorem implementation : FullySharpened spec.
   Proof.
     start sharpening ADT.
     hone representation using absRel_mono.
@@ -578,49 +397,36 @@ Require Import
 
     (* Enqueue *)
     - monad_simpl.
-      pick_by absRel_push.
+      pick_by (absRel_push d).
       done.
 
     (* Dequeue *)
-    - refine_testnil (fst r_n).
+    - monad_simpl.
+      refine_testnil (fst r_n).
       * refine_testnil (snd r_n).
-      + assert (r_o = nil) by (eapply absRel_must_be_nil; eauto).
-        subst.
-        monad_simpl.
-        pick_by (absRel_implies_mono absRel_initial).
+      + pick_by absRel_nil_nimpl.
         monad_simpl.
         done.
-      + refine_let (rev (snd r_n)).
-
-        unfold absRel_mono in H0. simpl in H0.
-        rewrite H1 in H0. simpl in H0.
-        inversion H2; subst. rewrite <- H5 in H0.
-        simpl in H0.
-        rewrite H2 in H0. simpl in H0.
-
-        erewrite eta_abs_snd with (abs := r_o) by eauto.
+      + pick_by absRel_push_nimpl.
         monad_simpl.
-        pick_by absRel_reversed_rep.
-        monad_simpl.
-        erewrite absRel_reversed_data by eauto.
         done.
 
-    cbv beta.
-    done.
+      + done.
 
-    erewrite eta_abs_fst with (abs := r_o) by eauto.
-    monad_simpl.
-    pick_by absRel_fast_rep.
-    monad_simpl.
-    erewrite absRel_fast_data with (abs := r_o) by eauto.
-    done.
 
-    rewrite refine_let_ret.
-    rewrite refine_testnil_ret.
-    rewrite refine_testnil_ret.
-    done.
+        *
+          (* assert (? = @tl data ?) by reflexivity. *)
+          (* rewrite H2. *)
+          pick_by (absRel_fast_rep_mono r_n).
+         monad_simpl.
+        done.
+        *
+done.
 
-    finalize.
+
+    - finalize.
+
+      admit.
   Defined.
 
   (* We can now extract a standlone Gallina term for this ADT. *)

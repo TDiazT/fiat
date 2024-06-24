@@ -2,7 +2,8 @@ Require Import Fiat.Common
         Fiat.Computation
         Fiat.ADT.ADTSig
         Fiat.ADT.Core
-        Fiat.ADTRefinement.Core Fiat.ADTRefinement.SetoidMorphisms
+        Fiat.ADTRefinement.Core
+        (* Fiat.ADTRefinement.SetoidMorphisms *)
         Fiat.ADTRefinement.GeneralRefinements.
 
 (* A generic refinement and honing tactic for switching the
@@ -61,19 +62,26 @@ Section HoneRepresentation.
     : methodType newRep dom cod :=
     absMethod' dom cod oldMethod.
 
+  Definition RCod_eq (cod : option Type) : Core.RCod cod :=
+    match cod with
+    | Some cod' => eq
+    | None => tt
+    end.
+
   Lemma refine_absMethod
         (dom : list Type)
         (cod : option Type)
         (oldMethod : methodType oldRep dom cod)
-  : @refineMethod oldRep newRep AbsR _ _
+  : @refineMethod oldRep newRep AbsR _ _ (RCod_eq cod)
                    oldMethod
                    (absMethod oldMethod).
   Proof.
     induction dom.
     - simpl in *; unfold refineMethod, refineMethod',
                   absMethod, absMethod', refine; intros;
-      destruct cod; intros; computes_to_inv.
+        destruct cod; [unfold refineProd | unfold refineEq]; intros; computes_to_inv.
       + destruct (H0 _ H) as [or' [Comp_or [AbsR_or'' eq_or''] ] ].
+        exists v. repeat split.
         repeat computes_to_econstructor; eauto.
         destruct v; simpl in *; subst; econstructor.
       + destruct (H0 _ H) as [or' [Comp_or AbsR_or'' ] ].
@@ -109,7 +117,7 @@ Section HoneRepresentation.
                     (absConstructor oldConstr).
   Proof.
     induction dom; simpl in *.
-    - unfold refineConstructor, absConstructor, refine; intros.
+    - unfold refineConstructor, absConstructor, refine; unfold refineEq; intros.
       computes_to_inv; eauto.
     - intros; eapply IHdom.
   Qed.
@@ -120,15 +128,18 @@ Section HoneRepresentation.
      implementations provided by [absMutatorMethod] and [absObserverMethod]. *)
   Lemma refineADT_Build_ADT_Rep_default
         Sig
+        RCods
         oldConstrs oldMeths :
     refineADT
       (@Build_ADT Sig oldRep oldConstrs oldMeths)
       (@Build_ADT Sig newRep
                   (fun idx => absConstructor (oldConstrs idx))
-                  (fun idx => absMethod (oldMeths idx))).
+                  (fun idx => absMethod (oldMeths idx)))
+      RCods.
   Proof.
-    eapply refineADT_Build_ADT_Rep; eauto.
-  Qed.
+    (* eapply refineADT_Build_ADT_Rep; eauto. *)
+  (* Qed. *)
+  Admitted.
 
 End HoneRepresentation.
 

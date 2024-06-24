@@ -131,12 +131,12 @@ Hint Immediate appendone_contra.
 
 Ltac begin := eexists; intro; set_evars.
 
-Ltac arithmetic := intros;
-  repeat match goal with
-         | [ |- context[max ?a ?b] ] => let Heq := fresh "Heq" in
-                                        destruct (Max.max_spec a b) as [ [? Heq] | [? Heq] ];
-                                          rewrite Heq in *; clear Heq
-         end; omega.
+(* Ltac arithmetic := intros; *)
+(*   repeat match goal with *)
+(*          | [ |- context[max ?a ?b] ] => let Heq := fresh "Heq" in *)
+(*                                         destruct (Max.max_spec a b) as [ [? Heq] | [? Heq] ]; *)
+(*                                           rewrite Heq in *; clear Heq *)
+(*          end; omega. *)
 
 Ltac refines := intros; repeat computes_to_econstructor; repeat computes_to_inv; subst.
 
@@ -186,11 +186,11 @@ Require Import Fiat.QueryStructure.Automation.QSImplementation.
 
 Ltac final_optimizations := eapply FullySharpened_Finish.
 
-Ltac determinize :=
-  match goal with
-  | |- appcontext[ @BuildADT (IndexedQueryStructure ?Schema ?Indexes) ] =>
-    FullySharpenQueryStructure Schema Indexes
-  end.
+(* Ltac determinize := *)
+(*   match goal with *)
+(*   | |- appcontext[ @BuildADT (IndexedQueryStructure ?Schema ?Indexes) ] => *)
+(*     FullySharpenQueryStructure Schema Indexes *)
+(*   end. *)
 
 Ltac choose_data_structures :=
   simpl; BuildQSIndexedBags' BuildEarlyBag BuildLastBag.
