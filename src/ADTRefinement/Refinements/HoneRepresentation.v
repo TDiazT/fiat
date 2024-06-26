@@ -2,8 +2,7 @@ Require Import Fiat.Common
         Fiat.Computation
         Fiat.ADT.ADTSig
         Fiat.ADT.Core
-        Fiat.ADTRefinement.Core
-        Fiat.ADTRefinement.SetoidMorphisms
+        Fiat.ADTRefinement.Core Fiat.ADTRefinement.SetoidMorphisms
         Fiat.ADTRefinement.GeneralRefinements.
 
 (* A generic refinement and honing tactic for switching the
