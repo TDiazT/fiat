@@ -224,19 +224,6 @@ Abort.
     inversion idx.
   Qed.
 
-  (* Fixpoint cons_RCods {n} {consSigs : Vector.t consSig n} *)
-  (*   {n'} {methSigs : Vector.t methSig n'} {methSig : methSig} *)
-  (*   (R : RCod (methCod methSig)) *)
-  (*   (RCods : forall idx, RCod (snd (MethodDomCod (BuildADTSig consSigs methSigs) idx))) *)
-  (*   idx {struct idx} :  *)
-  (*   RCod (snd (MethodDomCod (BuildADTSig consSigs (Vector.cons _ methSig n' methSigs)) idx)). *)
-  (*   (* simpl. *) *)
-  (*   (* depelim idx. *) *)
-  (*   destruct idx. *)
-  (*   - exact R. *)
-  (*   - exact (RCods idx). *)
-  (* Defined. *)
-
 
 Axiom eq_rect_eq :
   forall (U:Type) (p:U) (Q:U -> Type) (x:Q p) (h:p = p), x = eq_rect p Q x p h.
@@ -287,56 +274,6 @@ Axiom eq_rect_eq :
              (icons {| methBody := meth_body |} methDefs)
                           (icons {| methBody := refined_meth_body |} refined_methDefs).
 
-  (* Fixpoint refine_Methods_RCods *)
-  (*   {n} *)
-  (*   (consSigs : Vector.t consSig n) *)
-  (*   n' *)
-  (*   (methSigs : Vector.t methSig n') *)
-  (*   (methDefs : ilist (B := @methDef oldRep) methSigs) *)
-  (*   (refined_methDefs : ilist (B := @methDef newRep) methSigs) *)
-  (*   (H : refine_Methods methDefs refined_methDefs) {struct methSigs} : *)
-  (*   forall idx, RCod (snd (MethodDomCod (BuildADTSig consSigs methSigs) idx)). *)
-  (* Proof. *)
-  (*   cbn. *)
-  (*   destruct methSigs. *)
-  (*   - inversion idx. *)
-  (*   - intros idx. *)
-  (*     pose (IH := (refine_Methods_RCods n consSigs n0 methSigs)). *)
-  (*     depelim idx. *)
-  (*     + inversion H. exact R. *)
-  (*     + depelim H. *)
-  (*       eapply IH; eauto.     (*   destruct idx. *) *)
-  (*   (*   * *) *)
-
-  (*   (* induction n'. *) *)
-
-  (*   (* intros idx. *) *)
-  (*   (* generalize dependent methSigs. *) *)
-  (*   (* induction n'; intros methSigs methDefs refined_methDefs H. *) *)
-  (*   (* - inversion idx. *) *)
-  (*   (* - depelim H; subst. *) *)
-  (*   (*   depelim idx; subst. *) *)
-  (*   (*   * exact R. *) *)
-  (*   (*   * eapply IHn'; eauto. *) *)
-  (* Defined. *)
-
-  (* Definition refine_Methods_invert *)
-  (*            {n'} methSigs methDefs refined_methDefs *)
-  (*            (refine_meths : @refine_Methods n' methSigs methDefs refined_methDefs) *)
-  (* : match methSigs in Vector.t _ n' return *)
-  (*         forall methDefs refined_methDefs *)
-  (*                (refine_meths : @refine_Methods n' methSigs methDefs refined_methDefs), *)
-  (*           Prop *)
-  (*   with *)
-  (*     | Vector.nil => fun _ _ _ => True *)
-  (*     | Vector.cons methSig _ methSigs' => *)
-  (*       fun methDefs refined_methDefs refine_meths => *)
-  (*         refineMethod AbsR (ilist_hd methDefs) (ilist_hd refined_methDefs) /\ *)
-  (*         refine_Methods (ilist_tl methDefs) (ilist_tl refined_methDefs) *)
-  (*   end methDefs refined_methDefs refine_meths. *)
-  (* Proof. *)
-  (*   destruct refine_meths; eauto. *)
-  (* Defined. *)
 
   (* This method is used to hone an ADT's representation and
      spawn off subgoals for each operation in one fell-swoop. *)

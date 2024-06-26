@@ -28,9 +28,6 @@ Section MethodRefinement.
 >>
    *)
 
-  (* Definition oldConstrType {dom : list Type } := constructorType oldRep dom. *)
-  (* Definition newConstrType {dom : list Type } := constructorType newRep dom. *)
-
   Fixpoint refineConstructor
            {dom : list Type}
     : constructorType oldRep dom
