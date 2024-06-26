@@ -1,8 +1,7 @@
 (** * A variant of the [Comp] monad laws using [apply] *)
 Require Import Coq.Strings.String Coq.Sets.Ensembles.
 Require Import Fiat.Common.
-Require Import Fiat.Computation.Core Fiat.Computation.Monad .
-(* Require Import Fiat.Computation.Core Fiat.Computation.Monad Fiat.Computation.SetoidMorphisms. *)
+Require Import Fiat.Computation.Core Fiat.Computation.Monad Fiat.Computation.SetoidMorphisms.
 
 (** ** Helper monad laws, on the left side of a [refine] *)
 
@@ -99,12 +98,12 @@ Ltac interleave_autorewrite_refine_monad_with tac :=
   repeat first [ reflexivity
                | progress tac
                | progress autorewrite with refine_monad
-               (*| rewrite refine_bind_bind'; progress tac *)
-(*                | rewrite refine_bind_unit'; progress tac *)
-(*                | rewrite refine_unit_bind'; progress tac *)
-(*                | rewrite <- refine_bind_bind; progress tac *)
-(*                | rewrite <- refine_bind_unit; progress tac *)
-(*                | rewrite <- refine_unit_bind; progress tac ]*)
+               (*| rewrite refine_bind_bind'; progress tac
+               | rewrite refine_bind_unit'; progress tac
+               | rewrite refine_unit_bind'; progress tac
+               | rewrite <- refine_bind_bind; progress tac
+               | rewrite <- refine_bind_unit; progress tac
+                | rewrite <- refine_unit_bind; progress tac ]*)
                | rewrite <- !refineEquiv_bind_bind; progress tac
                | rewrite <- !refineEquiv_bind_unit; progress tac
                | rewrite <- !refineEquiv_unit_bind; progress tac
