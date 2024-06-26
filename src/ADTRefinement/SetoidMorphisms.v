@@ -39,8 +39,6 @@ Definition RCodPreOrderT (cod : option Type) (R : RCod cod) :=
 #[global]
   Instance refineMethod_refl rep Dom Cod (R : RCod Cod)
   {HR : RCodReflexive Cod R}
-  (* {HR : RCodRel Cod R Reflexive} *)
-(* Instance refineMethod_refl rep Dom Cod RCod `{Reflexive (Comp rep) RCod} *)
 : Reflexive (@refineMethod rep rep eq Dom Cod R).
 Proof.
   unfold refineMethod, methodType. intro. simpl. intros. subst.
