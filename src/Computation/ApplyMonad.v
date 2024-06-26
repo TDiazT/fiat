@@ -103,7 +103,7 @@ Ltac interleave_autorewrite_refine_monad_with tac :=
                | rewrite refine_unit_bind'; progress tac
                | rewrite <- refine_bind_bind; progress tac
                | rewrite <- refine_bind_unit; progress tac
-                | rewrite <- refine_unit_bind; progress tac ]*)
+               | rewrite <- refine_unit_bind; progress tac ]*)
                | rewrite <- !refineEquiv_bind_bind; progress tac
                | rewrite <- !refineEquiv_bind_unit; progress tac
                | rewrite <- !refineEquiv_unit_bind; progress tac
