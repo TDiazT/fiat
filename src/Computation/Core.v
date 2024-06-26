@@ -161,13 +161,16 @@ Local Ltac t := repeat first [ solve [ unfold computes_to in *; eauto ]
                                         | progress split_and ].
 
 Global Instance refine_PreOrder A (R : Comp A -> Comp A -> Prop) `{PreOrder (Comp A) R} : PreOrder (@refine A A R).
-Proof. t. Qed.
+t.
+Qed.
 
 Global Instance refineEq_PreOrder A (R : Comp A -> Comp A -> Prop) : PreOrder (@refineEq A).
-Proof. t. Qed.
+t.
+Qed.
 
 Global Instance refineEquiv_Equivalence A : Equivalence (@refineEquiv A).
-Proof. t. Qed.
+t.
+Qed.
 
 Global Opaque Return.
 Global Opaque Bind.
