@@ -321,7 +321,6 @@ Local Ltac refine_refineEquiv_t A :=
   setoid_subst_rel (@refineEquiv A);
   setoid_subst_rel (@refineEq A);
   reflexivity.
-Require Import Coq.Classes.RelationClasses.
 
 Global Instance refine_refineEquiv000_Proper {A}
   : Proper (refineEquiv ==> refineEquiv ==> impl) (@refineEq A) | 5.
