@@ -93,7 +93,7 @@ Section BuildADTRefinements.
     - reflexivity.
   Qed.
 
-  Corollary SharpenStep_BuildADT_ReplaceConstructor_eq
+  (* Corollary SharpenStep_BuildADT_ReplaceConstructor_eq
             (Rep : Type)
             (consSigs : list consSig)
             (methSigs : list methSig)
@@ -109,10 +109,9 @@ Section BuildADTRefinements.
   Proof.
     intros; eapply SharpenStep; eauto.
     apply refineADT_BuildADT_ReplaceConstructor_eq; eauto.
-  Defined.
+  Defined. *)
 
-
-
+(*
 Definition Sect {A B : Type} (s : A -> B) (r : B -> A) :=
   forall x : A, r (s x) = x.
 
@@ -190,7 +189,7 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
       repeat intro;
       apply path_sig_hprop;
       assumption.
-  Qed.
+  Qed. *)
 
   Lemma refineADT_BuildADT_ReplaceMethod
         (Rep : Type)
