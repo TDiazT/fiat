@@ -93,104 +93,104 @@ Section BuildADTRefinements.
     - reflexivity.
   Qed.
 
-  (*Corollary SharpenStep_BuildADT_ReplaceConstructor_eq *)
-(*             (Rep : Type) *)
-(*             (consSigs : list consSig) *)
-(*             (methSigs : list methSig) *)
-(*             (consDefs : ilist (@consDef Rep) consSigs) *)
-(*             (methDefs : ilist (@methDef Rep) methSigs) *)
-(*             (idx : @BoundedString (List.map consID consSigs)) *)
-(*             (newDef : consDef (nth_Bounded consID consSigs idx)) *)
-(*   : *)
-(*     (forall d, *)
-(*        refine (consBody (ith_Bounded consID consDefs idx) d) (consBody newDef d)) *)
-(*     -> Sharpened (ADTReplaceConsDef consDefs methDefs idx newDef) *)
-(*     -> Sharpened (BuildADT consDefs methDefs). *)
-(*   Proof. *)
-(*     intros; eapply SharpenStep; eauto. *)
-(*     apply refineADT_BuildADT_ReplaceConstructor_eq; eauto. *)
-(*   Defined. *)
-
-  (* *)
-
-(* Definition Sect {A B : Type} (s : A -> B) (r : B -> A) := *)
-(*   forall x : A, r (s x) = x. *)
-
-(* Class IsEquiv {A B : Type} (f : A -> B) := BuildIsEquiv { *)
-(*   equiv_inv : B -> A ; *)
-(*   eisretr : Sect equiv_inv f; *)
-(*   eissect : Sect f equiv_inv; *)
-(*   eisadj : forall x : A, eisretr (f x) = f_equal f (eissect x) *)
-(* }. *)
-
-(* Arguments eisretr {A B} f {_} _. *)
-(* Arguments eissect {A B} f {_} _. *)
-(* Arguments eisadj {A B} f {_} _. *)
-
-(* Definition apD10 {A} {B:A->Type} {f g : forall x, B x} (h:f=g) *)
-(*   : forall x, f x = g x *)
-(*   := fun x => match h with eq_refl => eq_refl end. *)
-
-(* Class Funext := *)
-(*   { isequiv_apD10 :> forall (A : Type) (P : A -> Type) f g, IsEquiv (@apD10 A P f g) }. *)
-
-(* (* We'll just assume functional extensionality for now. *) *)
-(* Axiom IsHProp : Type -> Type. *)
-(* Existing Class IsHProp. *)
-(* Instance : forall A, IsHProp (IsHProp A). *)
-(* Admitted. *)
-
-(* Axiom allpath_hprop : forall `{H : IsHProp A} (x y : A), x = y. *)
-(* Axiom hprop_allpath : forall (A : Type), (forall (x y : A), x = y) -> IsHProp A. *)
-
-(* Global Instance trunc_forall `{P : A -> Type} `{forall a, IsHProp (P a)} *)
-(*   : IsHProp (forall a, P a) | 100. *)
-(* Admitted. *)
-
-(* Instance trunc_prod `{IsHProp A, IsHProp B} : IsHProp (A * B). *)
-(* Admitted. *)
-
-(* Record hProp := hp { hproptype :> Type ; isp : IsHProp hproptype}. *)
-(* Existing Instance isp. *)
-
-(* Instance : forall A : hProp, IsHProp A. *)
-(* Admitted. *)
-
-(* Lemma path_sig_hprop {A} {P : A -> Prop} `{forall x : A, IsHProp (P x)} *)
-(*       (x y : sig P) *)
-(* : proj1_sig x = proj1_sig y -> x = y. *)
-(* Proof. *)
-(*   destruct_head sig; intros; subst; f_equal; apply allpath_hprop. *)
-(* Defined. *)
+  Corollary SharpenStep_BuildADT_ReplaceConstructor_eq
+            (Rep : Type)
+            (consSigs : list consSig)
+            (methSigs : list methSig)
+            (consDefs : ilist (@consDef Rep) consSigs)
+            (methDefs : ilist (@methDef Rep) methSigs)
+            (idx : @BoundedString (List.map consID consSigs))
+            (newDef : consDef (nth_Bounded consID consSigs idx))
+  :
+    (forall d,
+       refine (consBody (ith_Bounded consID consDefs idx) d) (consBody newDef d))
+    -> Sharpened (ADTReplaceConsDef consDefs methDefs idx newDef)
+    -> Sharpened (BuildADT consDefs methDefs).
+  Proof.
+    intros; eapply SharpenStep; eauto.
+    apply refineADT_BuildADT_ReplaceConstructor_eq; eauto.
+  Defined.
 
 
-(* Lemma refineADT_BuildADT_ReplaceConstructor_sigma *)
-(*         (RepT : Type) *)
-(*         (RepInv : RepT -> Prop) *)
-(*         `{forall x, IsHProp (RepInv x)} *)
-(*         (consSigs : list consSig) *)
-(*         (methSigs : list methSig) *)
-(*         (consDefs : ilist (@consDef (sig RepInv)) consSigs) *)
-(*         (methDefs : ilist (@methDef (sig RepInv)) methSigs) *)
-(*         (idx : @BoundedString (List.map consID consSigs)) *)
-(*         (newDef : consDef (nth_Bounded consID consSigs idx)) *)
-(*   : refineConstructor (fun x y => proj1_sig x = proj1_sig y) *)
-(*                       (consBody (ith_Bounded _ consDefs idx)) *)
-(*                       (consBody newDef) *)
-(*     -> refineADT *)
-(*          (BuildADT consDefs methDefs) *)
-(*          (ADTReplaceConsDef consDefs methDefs idx newDef). *)
-(*   Proof. *)
-(*     intro H'. *)
-(*     eapply refineADT_BuildADT_ReplaceConstructor_eq. *)
-(*     simpl in *; intros; subst; eauto. *)
-(*     etransitivity; [ | eapply_hyp; reflexivity ]. *)
-(*     eapply refine_bind; [ reflexivity | intro ]. *)
-(*     eapply refine_flip_impl_Pick; *)
-(*       repeat intro; *)
-(*       apply path_sig_hprop; *)
-(*       assumption. *)
-(*   Qed. *)
+
+Definition Sect {A B : Type} (s : A -> B) (r : B -> A) :=
+  forall x : A, r (s x) = x.
+
+Class IsEquiv {A B : Type} (f : A -> B) := BuildIsEquiv {
+  equiv_inv : B -> A ;
+  eisretr : Sect equiv_inv f;
+  eissect : Sect f equiv_inv;
+  eisadj : forall x : A, eisretr (f x) = f_equal f (eissect x)
+}.
+
+Arguments eisretr {A B} f {_} _.
+Arguments eissect {A B} f {_} _.
+Arguments eisadj {A B} f {_} _.
+
+Definition apD10 {A} {B:A->Type} {f g : forall x, B x} (h:f=g)
+  : forall x, f x = g x
+  := fun x => match h with eq_refl => eq_refl end.
+
+Class Funext :=
+  { isequiv_apD10 :> forall (A : Type) (P : A -> Type) f g, IsEquiv (@apD10 A P f g) }.
+
+(* We'll just assume functional extensionality for now. *)
+Axiom IsHProp : Type -> Type.
+Existing Class IsHProp.
+Instance : forall A, IsHProp (IsHProp A).
+Admitted.
+
+Axiom allpath_hprop : forall `{H : IsHProp A} (x y : A), x = y.
+Axiom hprop_allpath : forall (A : Type), (forall (x y : A), x = y) -> IsHProp A.
+
+Global Instance trunc_forall `{P : A -> Type} `{forall a, IsHProp (P a)}
+  : IsHProp (forall a, P a) | 100.
+Admitted.
+
+Instance trunc_prod `{IsHProp A, IsHProp B} : IsHProp (A * B).
+Admitted.
+
+Record hProp := hp { hproptype :> Type ; isp : IsHProp hproptype}.
+Existing Instance isp.
+
+Instance : forall A : hProp, IsHProp A.
+Admitted.
+
+Lemma path_sig_hprop {A} {P : A -> Prop} `{forall x : A, IsHProp (P x)}
+      (x y : sig P)
+: proj1_sig x = proj1_sig y -> x = y.
+Proof.
+  destruct_head sig; intros; subst; f_equal; apply allpath_hprop.
+Defined.
+
+
+Lemma refineADT_BuildADT_ReplaceConstructor_sigma
+        (RepT : Type)
+        (RepInv : RepT -> Prop)
+        `{forall x, IsHProp (RepInv x)}
+        (consSigs : list consSig)
+        (methSigs : list methSig)
+        (consDefs : ilist (@consDef (sig RepInv)) consSigs)
+        (methDefs : ilist (@methDef (sig RepInv)) methSigs)
+        (idx : @BoundedString (List.map consID consSigs))
+        (newDef : consDef (nth_Bounded consID consSigs idx))
+  : refineConstructor (fun x y => proj1_sig x = proj1_sig y)
+                      (consBody (ith_Bounded _ consDefs idx))
+                      (consBody newDef)
+    -> refineADT
+         (BuildADT consDefs methDefs)
+         (ADTReplaceConsDef consDefs methDefs idx newDef).
+  Proof.
+    intro H'.
+    eapply refineADT_BuildADT_ReplaceConstructor_eq.
+    simpl in *; intros; subst; eauto.
+    etransitivity; [ | eapply_hyp; reflexivity ].
+    eapply refine_bind; [ reflexivity | intro ].
+    eapply refine_flip_impl_Pick;
+      repeat intro;
+      apply path_sig_hprop;
+      assumption.
+  Qed.
 
   Lemma refineADT_BuildADT_ReplaceMethod
         (Rep : Type)
