@@ -1,6 +1,29 @@
 
 Require Import Refinement.
 
+Require Import Coq.Strings.Ascii
+        Coq.Bool.Bool
+        Coq.Lists.List Coq.Arith.Arith
+        .
+
+Import Lists.List.ListNotations.
+Require Import
+        Fiat.ADTRefinement.BuildADTRefinements.HoneRepresentation
+        Fiat.ADTNotation.BuildComputationalADT.
+
+(* Export Coq.Vectors.Vector *)
+(*         Coq.Strings.Ascii *)
+(*         Coq.Bool.Bvector. *)
+
+
+(* Export Coq.Logic.Eqdep_dec *)
+(*         Fiat.ADT.ComputationalADT *)
+(*         Fiat.ADTNotation.BuildComputationalADT. *)
+
+
+(* Export Fiat.ADTNotation.BuildADTSig Fiat.ADTNotation.BuildADT. *)
+
+
 #[unfold_fix]
 Symbol not_implemented : forall {A}, A.
 (* Symbol not_implemented : forall {A}, list A. *)
@@ -30,10 +53,20 @@ Rewrite Rules list_red_rew :=
   | _ => _
   end ==> @not_implemented (?P@{t0 := (@not_implemented (list ?A))}).
 
+(* Require Import Coq.Logic.Eqdep_dec *)
+(*         Fiat.ADT.ComputationalADT *)
+(*         Fiat.ADTNotation.BuildComputationalADT. *)
+Require Import         Fiat.Common Fiat.Computation Fiat.ADT.ADTSig Fiat.ADT.Core
+        Fiat.ADT.ComputationalADT
+        Fiat.Common.BoundedLookup
+        Fiat.Common.ilist
+        Fiat.Common.IterateBoundedIndex
+        Fiat.ADTNotation.BuildADTSig Fiat.ADTNotation.BuildADT
+        Fiat.ADTNotation.BuildComputationalADT
+        Fiat.ADTNotation.BuildADTReplaceMethods
+        Fiat.ADTRefinement.Core
+        Fiat.ADTRefinement.GeneralRefinements.
 Require Export Fiat.Common.Coq__8_4__8_5__Compat.
-Require Import Coq.Strings.Ascii
-        Coq.Bool.Bool
-        Coq.Lists.List.
 
 
 
@@ -168,34 +201,6 @@ Section ProdICP.
 
 End ProdICP.
 
-Export Coq.Vectors.Vector
-        Coq.Strings.Ascii
-        Coq.Bool.Bvector.
-
-Require Import Coq.Logic.Eqdep_dec
-        Fiat.ADT.ComputationalADT.
-        (* Fiat.ADTNotation.BuildComputationalADT. *)
-
-Export Coq.Logic.Eqdep_dec
-        Fiat.ADT.ComputationalADT.
-        (* Fiat.ADTNotation.BuildComputationalADT. *)
-
-Require Import Coq.Lists.List Coq.Arith.Arith
-        Fiat.Common Fiat.Computation Fiat.ADT.ADTSig Fiat.ADT.Core
-        Fiat.ADT.ComputationalADT
-        Fiat.Common.BoundedLookup
-        Fiat.Common.ilist
-        Fiat.Common.IterateBoundedIndex
-        Fiat.ADTNotation.BuildADTSig Fiat.ADTNotation.BuildADT
-        (* Fiat.ADTNotation.BuildComputationalADT *)
-        Fiat.ADTNotation.BuildADTReplaceMethods
-        Fiat.ADTRefinement.Core
-        Fiat.ADTRefinement.GeneralRefinements.
-
-Export Fiat.ADTNotation.BuildADTSig Fiat.ADTNotation.BuildADT.
-
-
-Export Lists.List.ListNotations.
 (* Require Import Tutorial. *)
 
 (* Ltac pick := erewrite refine_pick_val by eauto. *)
@@ -553,26 +558,93 @@ Definition RSig : forall (idx : MethodIndex sig), Core.RCod (snd (MethodDomCod s
   simpl. intros idx.
   (* induction idx. *)
   (* dependent induction idx. *)
-  dependent destruction idx.
+  (* dependent destruction idx. *)
+  depelim idx.
+  (* Enqueue *)
   - simpl. exact tt.
+  (* Dequeue *)
   - simpl.
-    dependent destruction idx.
+    depelim idx.
+    (* dependent destruction idx. *)
     2: inversion idx.
     simpl.
     exact refinableOption.(refinement).
 Defined.
 
 
-Require Import
-        Fiat.ADTRefinement.BuildADTRefinements.HoneRepresentation.
-        (* Fiat.ADTNotation.BuildComputationalADT *)
+Require Import Fiat.Computation.ApplyMonad.
+
+Ltac monad_simpl := autosetoid_rewrite with refine_monad;
+                   try simplify_with_applied_monad_laws; simpl.
+
+Ltac refine_constr :=
+  eapply refine_Constructors_cons;
+                      [ intros; simpl; intros;
+                        match goal with
+                        |  |- refineEq _ (?E _ _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refineEq _ (?E _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refineEq _ (?E _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refineEq _ (?E _ _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refineEq _ (?E _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refineEq _ (?E _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refineEq _ (?E _ _) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refineEq _ (?E _) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refineEq _ (?E) => is_evar E; let H := fresh in fast_set (H := E)
+                        | _ => idtac
+                        end | ].
+Tactic Notation "hone" "representation" "using" open_constr(AbsR') :=
+  eapply SharpenStep;
+  [eapply refineADT_BuildADT_Rep_refine_All with (AbsR := AbsR');
+    [ repeat (first [eapply refine_Constructors_nil
+                    | eapply refine_Constructors_cons;
+                      [ intros; simpl; intros;
+                        match goal with
+                        |  |- refine _ (?E _ _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refine _ (?E _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refine _ (?E _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refine _ (?E _ _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refine _ (?E _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refine _ (?E _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refine _ (?E _ _) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refine _ (?E _) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refine _ (?E) => is_evar E; let H := fresh in fast_set (H := E)
+                        | _ => idtac
+                        end | ] ])
+    |
+      (* repeat (first [eapply refine_Methods_nil *)
+      (*               | eapply refine_Methods_cons; *)
+      (*                 [ intros; simpl; intros; *)
+      (*                   match goal with *)
+      (*                   |  |- refine _ (?E _ _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
+      (*                   |  |- refine _ (?E _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
+      (*                   |  |- refine _ (?E _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
+      (*                   |  |- refine _ (?E _ _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E) *)
+      (*                   |  |- refine _ (?E _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E) *)
+      (*                   |  |- refine _ (?E _ _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
+      (*                   |  |- refine _ (?E _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
+      (*                   |  |- refine _ (?E _) => is_evar E; let H := fresh in fast_set (H := E) *)
+      (*                     | _ => idtac *)
+      (*                   end | ] *)
+      (*   ]) *)
+    ]
+  | ].
   (* Now we start deriving an implementation, in a correct-by-construction way. *)
-  Theorem implementation : FullySharpened spec RSig.
+  Theorem implementation : FullySharpened RSig spec .
   Proof.
     start sharpening ADT.
-    hone representation using absRel_mono.
 
-    - monad_simpl.
+    (* hone representation using absRel_mono. *)
+
+    eapply SharpenStep.
+    -  simpl. admit.
+    -
+    eapply HoneRepresentation.refineADT_BuildADT_Rep_refine_All with (AbsR := absRel_mono).
+
+    * refine_constr.
+      rewrite refineEquiv_bind_unit.
+      (* eapply refine_Constructors_cons; intros; simpl; intros. *)
+
+      monad_simpl.
       pick_by (absRel_implies_mono absRel_initial).
       done.
 

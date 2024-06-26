@@ -6,11 +6,11 @@ Require Import Coq.Lists.List Fiat.Common
         Fiat.ADT.Core
         Fiat.ADTNotation.BuildADTSig
         Fiat.ADTNotation.BuildADT
-        (* Fiat.ADTRefinement.Core Fiat.ADTRefinement.SetoidMorphisms *)
+        Fiat.ADTRefinement.Core Fiat.ADTRefinement.SetoidMorphisms
         Fiat.ADTRefinement.GeneralRefinements
         Fiat.ADTRefinement.GeneralBuildADTRefinements
-        Fiat.ADTRefinement.Refinements.HoneRepresentation.
-        (* Fiat.ADTRefinement.BuildADTSetoidMorphisms. *)
+        Fiat.ADTRefinement.Refinements.HoneRepresentation
+        Fiat.ADTRefinement.BuildADTSetoidMorphisms.
 
 (* A generic refinement and honing tactic for switching the
     representation of an ADT built from [BuildADT]. *)
@@ -43,9 +43,11 @@ Section HoneRepresentation.
         {n n'}
         {consSigs : Vector.t consSig n}
         {methSigs : Vector.t methSig n'}
+        RCods {HR : forall idx, RCodReflexive (snd (MethodDomCod (BuildADTSig consSigs methSigs) idx)) (RCods idx) }
         (consDefs : ilist (B := @consDef oldRep) consSigs)
         (methDefs : ilist (B := @methDef oldRep) methSigs) :
     refineADT
+      RCods
       (BuildADT consDefs methDefs)
       (BuildADT (imap absConsDef consDefs)
                 (imap absMethDef methDefs)).
@@ -56,7 +58,7 @@ Section HoneRepresentation.
       apply refine_absConstructor.
     - unfold getMethDef.
       rewrite <- ith_imap.
-      apply refine_absMethod.
+      apply refine_absMethod; eauto.
   Qed.
 
   (* [refine_AbsMethod] can be applied when honing methods to
@@ -65,69 +67,77 @@ Section HoneRepresentation.
   Lemma refine_AbsMethod :
     forall (Dom : list Type)
            (Cod : option Type)
+           (R : RCod Cod)
            (oldMethod : methodType _ Dom Cod)
            refinedMeth,
       (forall nr or,
          AbsR or nr ->
-         refineMethod' AbsR (oldMethod or)
+         refineMethod' AbsR R (oldMethod or)
                        (refinedMeth nr))
-      -> refineMethod eq (absMethod (cod := Cod) AbsR oldMethod)
+      -> refineMethod eq R (absMethod (cod := Cod) AbsR oldMethod)
                       refinedMeth.
-  Proof.
-    unfold refineMethod; intros; subst.
-    induction Dom; destruct Cod; simpl; intros.
-    - intros v ComputesTo_v; subst.
-      refine pick val v; eauto.
-      + repeat computes_to_econstructor; destruct v; eauto.
-      + intros or AbsR_or; pose proof (H _ _ AbsR_or _ ComputesTo_v);
-        computes_to_inv; subst.
-        eexists; split; eauto.
-    - intros v ComputesTo_v; subst.
-      refine pick val v; eauto.
-      + intros or AbsR_or; pose proof (H _ _ AbsR_or _ ComputesTo_v);
-        computes_to_inv; subst.
-        eexists; split; eauto.
-    - eapply IHDom with (oldMethod := fun r_o => oldMethod r_o d)
-                          (refinedMeth := fun r_n => refinedMeth r_n d);
-      intros; eapply H; eauto.
-    - eapply IHDom with (oldMethod := fun r_o => oldMethod r_o d)
-                          (refinedMeth := fun r_n => refinedMeth r_n d);
-      intros; eapply H; eauto.
-  Qed.
+  (* Proof. *)
+  (*   unfold refineMethod; intros; subst. *)
+  (*   induction Dom; destruct Cod; simpl; intros. *)
+  (*   - intros v ComputesTo_v; subst. *)
+  (*     exists v. repeat split; eauto. *)
+  (*     * eapply @BindComputes. *)
+  (*       + eapply PickComputes. intros. *)
+  (*         specialize (H _ _ H0). unfold refineMethod' in H. *)
+  (*     refine pick val v; eauto. *)
+  (*     + repeat computes_to_econstructor; destruct v; eauto. *)
+  (*     + intros or AbsR_or; pose proof (H _ _ AbsR_or _ ComputesTo_v); *)
+  (*       computes_to_inv; subst. *)
+  (*       eexists; split; eauto. *)
+  (*   - intros v ComputesTo_v; subst. *)
+  (*     refine pick val v; eauto. *)
+  (*     + intros or AbsR_or; pose proof (H _ _ AbsR_or _ ComputesTo_v); *)
+  (*       computes_to_inv; subst. *)
+  (*       eexists; split; eauto. *)
+  (*   - eapply IHDom with (oldMethod := fun r_o => oldMethod r_o d) *)
+  (*                         (refinedMeth := fun r_n => refinedMeth r_n d); *)
+  (*     intros; eapply H; eauto. *)
+  (*   - eapply IHDom with (oldMethod := fun r_o => oldMethod r_o d) *)
+  (*                         (refinedMeth := fun r_n => refinedMeth r_n d); *)
+  (*     intros; eapply H; eauto. *)
+  (* Qed. *)
+    Abort.
 
   Lemma refine_AbsMethod' :
     forall (Dom : list Type)
            (Cod : option Type)
+           (R : RCod Cod)
            (oldMethod : methodType _ Dom Cod)
            refinedMeth,
-      refineMethod eq (absMethod (cod := Cod) AbsR oldMethod) refinedMeth
+      refineMethod eq R (absMethod (cod := Cod) AbsR oldMethod) refinedMeth
       -> (forall nr or,
              AbsR or nr ->
-             refineMethod' AbsR (oldMethod or)
+             refineMethod' AbsR R (oldMethod or)
                            (refinedMeth nr)).
   Proof.
-    unfold refineMethod; intros; subst.
-    induction Dom; destruct Cod; simpl; intros.
-    - intros v ComputesTo_v; subst.
-      eapply H in ComputesTo_v; eauto.
-      unfold absMethod; simpl in *.
-      computes_to_inv; subst.
-      apply ComputesTo_v in H0; destruct_ex; intuition; subst.
-      destruct x; destruct v0; simpl in *; subst.
-      repeat computes_to_econstructor; eauto.
-    - intros v ComputesTo_v; subst.
-      eapply H in ComputesTo_v; eauto.
-      unfold absMethod; simpl in *.
-      computes_to_inv; subst.
-      apply ComputesTo_v in H0; destruct_ex; intuition; subst.
-      repeat computes_to_econstructor; eauto.
-    - eapply IHDom with (oldMethod := fun r_o => oldMethod r_o d)
-                          (refinedMeth := fun r_n => refinedMeth r_n d);
-      intros; eapply H; eauto.
-    - eapply IHDom with (oldMethod := fun r_o => oldMethod r_o d)
-                          (refinedMeth := fun r_n => refinedMeth r_n d);
-      intros; eapply H; eauto.
-  Qed.
+  (*   unfold refineMethod; intros; subst. *)
+  (*   induction Dom; destruct Cod; simpl; intros. *)
+  (*   - intros v ComputesTo_v; subst. *)
+  (*     eapply H in ComputesTo_v; eauto. *)
+  (*     unfold absMethod; simpl in *. *)
+  (*     computes_to_inv; subst. *)
+  (*     apply ComputesTo_v in H0; destruct_ex; intuition; subst. *)
+  (*     destruct x; destruct v0; simpl in *; subst. *)
+  (*     repeat computes_to_econstructor; eauto. *)
+  (*   - intros v ComputesTo_v; subst. *)
+  (*     eapply H in ComputesTo_v; eauto. *)
+  (*     unfold absMethod; simpl in *. *)
+  (*     computes_to_inv; subst. *)
+  (*     apply ComputesTo_v in H0; destruct_ex; intuition; subst. *)
+  (*     repeat computes_to_econstructor; eauto. *)
+  (*   - eapply IHDom with (oldMethod := fun r_o => oldMethod r_o d) *)
+  (*                         (refinedMeth := fun r_n => refinedMeth r_n d); *)
+  (*     intros; eapply H; eauto. *)
+  (*   - eapply IHDom with (oldMethod := fun r_o => oldMethod r_o d) *)
+  (*                         (refinedMeth := fun r_n => refinedMeth r_n d); *)
+  (*     intros; eapply H; eauto. *)
+  (* Qed. *)
+    Abort.
 
   (* [refine_AbsConstructor] can be applied when honing constructors to
      get goals in a nicer form. *)
@@ -140,14 +150,15 @@ Section HoneRepresentation.
       -> refineConstructor eq (absConstructor AbsR oldConstructor)
                            refinedConstructor.
   Proof.
-    unfold refineMethod; intros; subst.
-    induction Dom; simpl; intros.
-    - intros v ComputesTo_v; subst.
-      refine pick val v; eauto.
-      apply H in ComputesTo_v; computes_to_inv; subst.
-      eexists; split; eauto.
-    - eapply IHDom; eauto.
-  Qed.
+  (*   unfold refineMethod; intros; subst. *)
+  (*   induction Dom; simpl; intros. *)
+  (*   - intros v ComputesTo_v; subst. *)
+  (*     refine pick val v; eauto. *)
+  (*     apply H in ComputesTo_v; computes_to_inv; subst. *)
+  (*     eexists; split; eauto. *)
+  (*   - eapply IHDom; eauto. *)
+  (* Qed. *)
+    Abort.
 
   Lemma refine_AbsConstructor' :
     forall Dom (oldConstructor : constructorType _ Dom)
@@ -157,15 +168,16 @@ Section HoneRepresentation.
       -> refineConstructor AbsR oldConstructor
                             refinedConstructor.
   Proof.
-    unfold refineConstructor; intros; subst.
-    induction Dom; simpl; intros.
-    - intros v ComputesTo_v; subst.
-      unfold absConstructor in *.
-      apply H in ComputesTo_v; computes_to_inv; subst.
-      destruct_ex; intuition.
-      eexists; split; eauto.
-    - eapply IHDom; apply H.
-  Qed.
+  (*   unfold refineConstructor; intros; subst. *)
+  (*   induction Dom; simpl; intros. *)
+  (*   - intros v ComputesTo_v; subst. *)
+  (*     unfold absConstructor in *. *)
+  (*     apply H in ComputesTo_v; computes_to_inv; subst. *)
+  (*     destruct_ex; intuition. *)
+  (*     eexists; split; eauto. *)
+  (*   - eapply IHDom; apply H. *)
+  (* Qed. *)
+Abort.
 
   Inductive refine_Constructors  :
     forall {n} {consSigs : Vector.t consSig n},
@@ -206,43 +218,125 @@ Section HoneRepresentation.
     destruct refine_cons; eauto.
   Defined.
 
-  Inductive refine_Methods :
-    forall {n'} {methSigs : Vector.t methSig n'},
+  Definition empty_RCods {n} {consSigs : Vector.t consSig n}
+    {methSigs : Vector.t methSig 0} :
+    forall idx, RCod (snd (MethodDomCod (BuildADTSig consSigs methSigs) idx)).
+    inversion idx.
+  Qed.
+
+  (* Fixpoint cons_RCods {n} {consSigs : Vector.t consSig n} *)
+  (*   {n'} {methSigs : Vector.t methSig n'} {methSig : methSig} *)
+  (*   (R : RCod (methCod methSig)) *)
+  (*   (RCods : forall idx, RCod (snd (MethodDomCod (BuildADTSig consSigs methSigs) idx))) *)
+  (*   idx {struct idx} :  *)
+  (*   RCod (snd (MethodDomCod (BuildADTSig consSigs (Vector.cons _ methSig n' methSigs)) idx)). *)
+  (*   (* simpl. *) *)
+  (*   (* depelim idx. *) *)
+  (*   destruct idx. *)
+  (*   - exact R. *)
+  (*   - exact (RCods idx). *)
+  (* Defined. *)
+
+
+Axiom eq_rect_eq :
+  forall (U:Type) (p:U) (Q:U -> Type) (x:Q p) (h:p = p), x = eq_rect p Q x p h.
+
+  Definition cons_RCods {n} {consSigs : Vector.t consSig n}
+    {n'} {methSigs : Vector.t methSig n'} {methSig : methSig}
+    (R : RCod (methCod methSig))
+    (RCods : forall idx, RCod (snd (MethodDomCod (BuildADTSig consSigs methSigs) idx))) :
+    forall idx,
+      { RCods' : RCod (snd (MethodDomCod (BuildADTSig consSigs (Vector.cons _ methSig n' methSigs)) idx)) | (forall (e : Fin.F1 = idx), RCods' =  eq_rect Fin.F1 (fun idx => RCod (snd (MethodDomCod (BuildADTSig consSigs (Vector.cons _ methSig n' methSigs)) idx))) R _ e) /\ forall idx' (e : Fin.FS idx' = idx), RCods' = eq_rect (Fin.FS idx') (fun idx => RCod (snd (MethodDomCod (BuildADTSig consSigs (Vector.cons _ methSig n' methSigs)) idx))) (RCods idx') _ e}.
+    intro idx.
+    cbn in *.
+    (* inversion idx; subst. *)
+    depelim idx.
+    - exists R. split.
+      * intros. rewrite <- eq_rect_eq . reflexivity.
+      * intros ? e0. inversion e0.
+    - exists (RCods idx). split.
+      * inversion e.
+      * intros.
+        assert (idx' = idx). admit.
+        destruct H.
+
+        rewrite <- eq_rect_eq. reflexivity.
+  Defined.
+
+  Inductive refine_Methods {n} {consSigs : Vector.t consSig n} :
+    forall {n'}  {methSigs : Vector.t methSig n'}
+      (RCods : forall idx, RCod (snd (MethodDomCod (BuildADTSig consSigs methSigs) idx))),
       ilist (B := @methDef oldRep) methSigs
       -> ilist (B := @methDef newRep) methSigs ->
-           Prop :=
-  | refine_Methods_nil : @refine_Methods _ (Vector.nil _) inil inil
+           Type :=
+  | refine_Methods_nil : @refine_Methods _ _ _ (Vector.nil _) empty_RCods inil inil
   | refine_Methods_cons :
-      forall n' methSig methSigs
+      forall n' methSig methSigs R RCods
              (meth_body : @methodType oldRep (methDom methSig) (methCod methSig))
              (refined_meth_body : @methodType newRep (methDom methSig) (methCod methSig))
              (methDefs : ilist (B := @methDef oldRep) methSigs)
              (refined_methDefs : ilist (B := @methDef newRep) methSigs),
-        (let H := refined_meth_body in refineMethod AbsR meth_body H)
-        -> refine_Methods methDefs refined_methDefs
+        (let H := refined_meth_body in refineMethod AbsR R meth_body H)
+        -> refine_Methods RCods methDefs refined_methDefs
         -> @refine_Methods
-             _
-             (Vector.cons _ methSig n' methSigs)
+            _
+            _
+            _
+            (Vector.cons _ methSig n' methSigs)
+            (fun idx => proj1_sig (cons_RCods R RCods idx))
              (icons {| methBody := meth_body |} methDefs)
                           (icons {| methBody := refined_meth_body |} refined_methDefs).
 
-  Definition refine_Methods_invert
-             {n'} methSigs methDefs refined_methDefs
-             (refine_meths : @refine_Methods n' methSigs methDefs refined_methDefs)
-  : match methSigs in Vector.t _ n' return
-          forall methDefs refined_methDefs
-                 (refine_meths : @refine_Methods n' methSigs methDefs refined_methDefs),
-            Prop
-    with
-      | Vector.nil => fun _ _ _ => True
-      | Vector.cons methSig _ methSigs' =>
-        fun methDefs refined_methDefs refine_meths =>
-          refineMethod AbsR (ilist_hd methDefs) (ilist_hd refined_methDefs) /\
-          refine_Methods (ilist_tl methDefs) (ilist_tl refined_methDefs)
-    end methDefs refined_methDefs refine_meths.
-  Proof.
-    destruct refine_meths; eauto.
-  Defined.
+  (* Fixpoint refine_Methods_RCods *)
+  (*   {n} *)
+  (*   (consSigs : Vector.t consSig n) *)
+  (*   n' *)
+  (*   (methSigs : Vector.t methSig n') *)
+  (*   (methDefs : ilist (B := @methDef oldRep) methSigs) *)
+  (*   (refined_methDefs : ilist (B := @methDef newRep) methSigs) *)
+  (*   (H : refine_Methods methDefs refined_methDefs) {struct methSigs} : *)
+  (*   forall idx, RCod (snd (MethodDomCod (BuildADTSig consSigs methSigs) idx)). *)
+  (* Proof. *)
+  (*   cbn. *)
+  (*   destruct methSigs. *)
+  (*   - inversion idx. *)
+  (*   - intros idx. *)
+  (*     pose (IH := (refine_Methods_RCods n consSigs n0 methSigs)). *)
+  (*     depelim idx. *)
+  (*     + inversion H. exact R. *)
+  (*     + depelim H. *)
+  (*       eapply IH; eauto.     (*   destruct idx. *) *)
+  (*   (*   * *) *)
+
+  (*   (* induction n'. *) *)
+
+  (*   (* intros idx. *) *)
+  (*   (* generalize dependent methSigs. *) *)
+  (*   (* induction n'; intros methSigs methDefs refined_methDefs H. *) *)
+  (*   (* - inversion idx. *) *)
+  (*   (* - depelim H; subst. *) *)
+  (*   (*   depelim idx; subst. *) *)
+  (*   (*   * exact R. *) *)
+  (*   (*   * eapply IHn'; eauto. *) *)
+  (* Defined. *)
+
+  (* Definition refine_Methods_invert *)
+  (*            {n'} methSigs methDefs refined_methDefs *)
+  (*            (refine_meths : @refine_Methods n' methSigs methDefs refined_methDefs) *)
+  (* : match methSigs in Vector.t _ n' return *)
+  (*         forall methDefs refined_methDefs *)
+  (*                (refine_meths : @refine_Methods n' methSigs methDefs refined_methDefs), *)
+  (*           Prop *)
+  (*   with *)
+  (*     | Vector.nil => fun _ _ _ => True *)
+  (*     | Vector.cons methSig _ methSigs' => *)
+  (*       fun methDefs refined_methDefs refine_meths => *)
+  (*         refineMethod AbsR (ilist_hd methDefs) (ilist_hd refined_methDefs) /\ *)
+  (*         refine_Methods (ilist_tl methDefs) (ilist_tl refined_methDefs) *)
+  (*   end methDefs refined_methDefs refine_meths. *)
+  (* Proof. *)
+  (*   destruct refine_meths; eauto. *)
+  (* Defined. *)
 
   (* This method is used to hone an ADT's representation and
      spawn off subgoals for each operation in one fell-swoop. *)
@@ -250,34 +344,42 @@ Section HoneRepresentation.
         {n n'}
         (consSigs : Vector.t consSig n)
         (methSigs : Vector.t methSig n')
+        RCods
         (consDefs : ilist (B := @consDef oldRep) consSigs)
         (methDefs : ilist (B := @methDef oldRep) methSigs)
         (refined_consDefs : ilist (B := @consDef newRep) consSigs)
         (refined_methDefs : ilist (B := @methDef newRep) methSigs)
   :
     refine_Constructors consDefs refined_consDefs
-    -> refine_Methods methDefs refined_methDefs
+    -> refine_Methods RCods methDefs refined_methDefs
     -> refineADT
-      (BuildADT consDefs methDefs)
-      (BuildADT refined_consDefs refined_methDefs).
+        RCods
+        (BuildADT consDefs methDefs)
+        (BuildADT refined_consDefs refined_methDefs).
   Proof.
     intros; eapply refineADT_Build_ADT_Rep with (AbsR := AbsR).
-    - induction H; simpl.
+    - clear -H. induction H; simpl.
       + intro; inversion mutIdx.
-      + intro; revert IHrefine_Constructors H; clear.
-        revert consSig constr_body refined_constr_body
-               consSigs consDefs refined_consDefs; pattern n, mutIdx.
+      + intro; revert IHrefine_Constructors H.
+        generalize dependent consSig.
+        generalize dependent consSigs.
+        pattern n, mutIdx.
         match goal with
           |- ?P n mutIdx => simpl; apply (Fin.caseS P); simpl; intros; eauto
         end.
-    - induction H0; simpl.
+    - induction X; simpl.
       + intro; inversion obsIdx.
-      + intro; revert IHrefine_Methods H0; clear.
-        revert methSig meth_body refined_meth_body
-               methSigs methDefs refined_methDefs consSigs; pattern n', obsIdx.
-        match goal with
-          |- ?P n' obsIdx => simpl; apply (Fin.caseS P); simpl; intros; eauto
-        end.
+      + depelim obsIdx.
+        *
+          set (cons_RCods _ _ _).
+          destruct s as [? [Heq1 Heq2]].
+          cbn.
+          rewrite (Heq1 eq_refl). cbn. exact r.
+        *
+          set (cons_RCods _ _ _).
+          destruct s as [? [Heq1 Heq2]].
+          cbn.
+          rewrite (Heq2 _ eq_refl). cbn. apply IHX.
   Qed.
 
 End HoneRepresentation.
@@ -316,107 +418,107 @@ Ltac set_rhs_head_evar _ :=
   end.
 
 (* Honing Tactics for working on a single constructor at a time*)
-Tactic Notation "hone" "constructor" constr(consIdx) :=
-  let A :=
-      match goal with
-          |- Sharpened ?A => constr:(A) end in
-  let ASig := match type of A with
-                  ADT ?Sig => Sig
-              end in
-  let consSigs :=
-      match ASig with
-          BuildADTSig ?consSigs _ => constr:(consSigs) end in
-  let methSigs :=
-      match ASig with
-          BuildADTSig _ ?methSigs => constr:(methSigs) end in
-  let consDefs :=
-      match A with
-          BuildADT ?consDefs _  => constr:(consDefs) end in
-  let methDefs :=
-      match A with
-          BuildADT _ ?methDefs  => constr:(methDefs) end in
-  let Rep' :=
-      match A with
-          @BuildADT ?Rep _ _ _ _ => constr:(Rep) end in
-  let ConstructorIndex' := eval compute in (ConstructorIndex ASig) in
-  let MethodIndex' := eval compute in (MethodIndex ASig) in
-  let ConstructorDom' := eval compute in (ConstructorDom ASig) in
-  let consIdxB := eval compute in
-  (@Build_BoundedIndex _ (List.map consID consSigs) consIdx _) in
-      eapply (@SharpenStep_BuildADT_ReplaceConstructor_eq
-               Rep'  _ _ consDefs methDefs consIdxB
-               (@Build_consDef Rep'
-                              {| consID := consIdx;
-                                 consDom := ConstructorDom' consIdxB
-                              |}
-                              _
-             ));
-    [ intros; simpl in *;
-      set_rhs_head_evar ();
-      match goal with
-        |  |- refine (absConstructor ?AbsR ?oldConstructor ?d)
-                     (?H ?d) =>
-           eapply (@refine_AbsConstructor _ _ AbsR _ oldConstructor)
-        | _ => cbv [absConstructor]
-      end
-    |  cbv beta in *; simpl in *;
-       cbv beta delta [replace_BoundedIndex replace_Index] in *;
-       simpl in *].
+(* Tactic Notation "hone" "constructor" constr(consIdx) := *)
+(*   let A := *)
+(*       match goal with *)
+(*           |- Sharpened ?A => constr:(A) end in *)
+(*   let ASig := match type of A with *)
+(*                   ADT ?Sig => Sig *)
+(*               end in *)
+(*   let consSigs := *)
+(*       match ASig with *)
+(*           BuildADTSig ?consSigs _ => constr:(consSigs) end in *)
+(*   let methSigs := *)
+(*       match ASig with *)
+(*           BuildADTSig _ ?methSigs => constr:(methSigs) end in *)
+(*   let consDefs := *)
+(*       match A with *)
+(*           BuildADT ?consDefs _  => constr:(consDefs) end in *)
+(*   let methDefs := *)
+(*       match A with *)
+(*           BuildADT _ ?methDefs  => constr:(methDefs) end in *)
+(*   let Rep' := *)
+(*       match A with *)
+(*           @BuildADT ?Rep _ _ _ _ => constr:(Rep) end in *)
+(*   let ConstructorIndex' := eval compute in (ConstructorIndex ASig) in *)
+(*   let MethodIndex' := eval compute in (MethodIndex ASig) in *)
+(*   let ConstructorDom' := eval compute in (ConstructorDom ASig) in *)
+(*   let consIdxB := eval compute in *)
+(*   (@Build_BoundedIndex _ (List.map consID consSigs) consIdx _) in *)
+(*       eapply (@SharpenStep_BuildADT_ReplaceConstructor_eq *)
+(*                Rep'  _ _ consDefs methDefs consIdxB *)
+(*                (@Build_consDef Rep' *)
+(*                               {| consID := consIdx; *)
+(*                                  consDom := ConstructorDom' consIdxB *)
+(*                               |} *)
+(*                               _ *)
+(*              )); *)
+(*     [ intros; simpl in *; *)
+(*       set_rhs_head_evar (); *)
+(*       match goal with *)
+(*         |  |- refine (absConstructor ?AbsR ?oldConstructor ?d) *)
+(*                      (?H ?d) => *)
+(*            eapply (@refine_AbsConstructor _ _ AbsR _ oldConstructor) *)
+(*         | _ => cbv [absConstructor] *)
+(*       end *)
+(*     |  cbv beta in *; simpl in *; *)
+(*        cbv beta delta [replace_BoundedIndex replace_Index] in *; *)
+(*        simpl in *]. *)
 
 (* Honing Tactics for working on a single method at a time*)
 Arguments DecADTSig : simpl never.
- Tactic Notation "hone" "method" constr(methIdx) :=
-   let A :=
-       match goal with
-         |- Sharpened ?A => constr:(A) end in
-   let DSig :=
-       match goal with
-         |- @refineADT ?DSig _ _ => constr:(DSig)
-       end in
-   let ASig := match type of A with
-                 DecoratedADT ?Sig => Sig
-               end in
-   let consSigs :=
-      match ASig with
-          BuildADTSig ?consSigs _ => constr:(consSigs) end in
-  let methSigs :=
-      match ASig with
-          BuildADTSig _ ?methSigs => constr:(methSigs) end in
-  let consDefs :=
-      match A with
-          BuildADT ?consDefs _  => constr:(consDefs) end in
-  let methDefs :=
-      match A with
-          BuildADT _ ?methDefs  => constr:(methDefs) end in
-  let Rep' :=
-      match A with
-          @BuildADT ?Rep _ _ _ _ _ _ => constr:(Rep) end in
-  let ConstructorIndex' := eval compute in (ConstructorIndex ASig) in
-  let MethodIndex' := eval compute in (MethodIndex ASig) in
-  let MethodDomCod' := eval compute in (MethodDomCod ASig) in
-  let methIdxB := eval compute in
-  (ibound (indexb (@Build_BoundedIndex _ _ (Vector.map methID methSigs) methIdx _))) in
-      eapply (@SharpenStep_BuildADT_ReplaceMethod_eq
-                Rep' _ _ _ _ consDefs methDefs methIdxB
-                (@Build_methDef Rep'
-                               {| methID := methIdx;
-                                  methDom := fst (MethodDomCod' methIdxB);
-                                  methCod := snd (MethodDomCod' methIdxB)
-                               |}
-                               _
-                              ));
-    [ simpl refineMethod; intros; simpl in *;
-      set_rhs_head_evar ();
-      match goal with
-        |  |- refine (@absMethod ?oldRep ?newRep ?AbsR ?Dom ?Cod ?oldMethod ?nr ?d)
-                     (?H ?nr ?d) => eapply (@refine_AbsMethod oldRep newRep AbsR Dom Cod oldMethod)
-        | _ => cbv [absMethod]
-      end; intros
-    |
-    cbv beta in *|-;
-    cbv delta [replace_BoundedIndex replace_Index] in *;
-    simpl in *
-    ].
+(*  Tactic Notation "hone" "method" constr(methIdx) := *)
+(*    let A := *)
+(*        match goal with *)
+(*          |- Sharpened ?A => constr:(A) end in *)
+(*    let DSig := *)
+(*        match goal with *)
+(*          |- @refineADT ?DSig _ _ => constr:(DSig) *)
+(*        end in *)
+(*    let ASig := match type of A with *)
+(*                  DecoratedADT ?Sig => Sig *)
+(*                end in *)
+(*    let consSigs := *)
+(*       match ASig with *)
+(*           BuildADTSig ?consSigs _ => constr:(consSigs) end in *)
+(*   let methSigs := *)
+(*       match ASig with *)
+(*           BuildADTSig _ ?methSigs => constr:(methSigs) end in *)
+(*   let consDefs := *)
+(*       match A with *)
+(*           BuildADT ?consDefs _  => constr:(consDefs) end in *)
+(*   let methDefs := *)
+(*       match A with *)
+(*           BuildADT _ ?methDefs  => constr:(methDefs) end in *)
+(*   let Rep' := *)
+(*       match A with *)
+(*           @BuildADT ?Rep _ _ _ _ _ _ => constr:(Rep) end in *)
+(*   let ConstructorIndex' := eval compute in (ConstructorIndex ASig) in *)
+(*   let MethodIndex' := eval compute in (MethodIndex ASig) in *)
+(*   let MethodDomCod' := eval compute in (MethodDomCod ASig) in *)
+(*   let methIdxB := eval compute in *)
+(*   (ibound (indexb (@Build_BoundedIndex _ _ (Vector.map methID methSigs) methIdx _))) in *)
+(*       eapply (@SharpenStep_BuildADT_ReplaceMethod_eq *)
+(*                 Rep' _ _ _ _ consDefs methDefs methIdxB *)
+(*                 (@Build_methDef Rep' *)
+(*                                {| methID := methIdx; *)
+(*                                   methDom := fst (MethodDomCod' methIdxB); *)
+(*                                   methCod := snd (MethodDomCod' methIdxB) *)
+(*                                |} *)
+(*                                _ *)
+(*                               )); *)
+(*     [ simpl refineMethod; intros; simpl in *; *)
+(*       set_rhs_head_evar (); *)
+(*       match goal with *)
+(*         |  |- refine (@absMethod ?oldRep ?newRep ?AbsR ?Dom ?Cod ?oldMethod ?nr ?d) *)
+(*                      (?H ?nr ?d) => eapply (@refine_AbsMethod oldRep newRep AbsR Dom Cod oldMethod) *)
+(*         | _ => cbv [absMethod] *)
+(*       end; intros *)
+(*     | *)
+(*     cbv beta in *|-; *)
+(*     cbv delta [replace_BoundedIndex replace_Index] in *; *)
+(*     simpl in * *)
+(*     ]. *)
 
 (* Honing tactic for refining the representation type and spawning new subgoals for
  each of the operations. *)

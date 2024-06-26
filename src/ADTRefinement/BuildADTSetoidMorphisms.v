@@ -1,6 +1,6 @@
 Require Import Fiat.Common
-        Fiat.ADTNotation.BuildADT Fiat.ADTRefinement.Core.
-        (* Fiat.ADTRefinement.SetoidMorphisms. *)
+        Fiat.ADTNotation.BuildADT Fiat.ADTRefinement.Core
+        Fiat.ADTRefinement.SetoidMorphisms.
 
 (* A notation-friendly version of the setoid morphisms
    infrastructure for ADT refinement. *)
@@ -17,34 +17,33 @@ Theorem refineADT_BuildADT_Rep n n' consSigs methSigs oldRep newRep
                           (getConsDef newCons consIdx))
       (fun x y => @respectful_heteroT _ _ _ _
                     (fun oldMeth newMeth =>
-                       forall methIdx,
-                         @refineMethod oldRep newRep AbsR _ _ (RCods methIdx)
+                       forall methIdx R,
+                         @refineMethod oldRep newRep AbsR _ _ R
                                          (getMethDef oldMeth methIdx)
                                          (getMethDef newMeth methIdx))
-                    (fun m m' => refineADT))
+                    (fun m m' => refineADT RCods))
      (@BuildADT oldRep n n' consSigs methSigs)
      (@BuildADT newRep n n' consSigs methSigs).
  Proof.
    unfold Proper, respectful_heteroT; intros.
-   let A := match goal with |- refineADT ?A ?B ?R => constr:(A) end in
-   let B := match goal with |- refineADT ?A ?B ?R => constr:(B) end in
-   eapply (@refinesADT _ A B RCodsADT AbsR );
+   let A := match goal with |- refineADT ?RCods ?A ?B => constr:(A) end in
+   let B := match goal with |- refineADT ?RCods ?A ?B => constr:(B) end in
+   eapply (@refinesADT _ RCods A B AbsR );
      unfold id, pointwise_relation in *; simpl in *; intros; eauto.
- (* Qed. *)
- Admitted.
+ Qed.
 
 Lemma refineADT_BuildADT_Both
-      rep n n' consigs methSigs RCods RCodsADT
+      rep n n' consigs methSigs RCods
 : forall oldCons newCons,
     (forall consIdx, @refineConstructor _ _ eq _
                                    (getConsDef oldCons consIdx)
                                    (getConsDef newCons consIdx))
     -> forall oldMeth newMeth,
-         (forall methIdx, @refineMethod _ _ eq _ _ (RCods methIdx)
+         (forall methIdx R, @refineMethod _ _ eq _ _ R
                                          (getMethDef oldMeth methIdx)
                                          (getMethDef newMeth methIdx))
-         -> refineADT (@BuildADT n n' rep consigs methSigs oldCons oldMeth)
-                      (@BuildADT n n' rep consigs methSigs newCons newMeth) RCodsADT.
+         -> refineADT RCods (@BuildADT n n' rep consigs methSigs oldCons oldMeth)
+                      (@BuildADT n n' rep consigs methSigs newCons newMeth).
 Proof.
   intros; eapply refineADT_BuildADT_Rep; eauto; reflexivity.
 Qed.

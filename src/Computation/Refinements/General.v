@@ -20,8 +20,7 @@ Section general_refine_lemmas.
   : forall c (x y : A -> Comp B),
     (forall a, c ↝ a -> refine R (x a) (y a))
     -> refine R (a <- c; x a)%comp (a <- c; y a).
-  (* Proof. t_refine. *)
-  (*        destruct H4 as [v' [Hxv _]] . *)
+  (* Proof. t_refine.  unfold refine in *. cbn. eapply @BindComputes. *)
   (*        unfold In. *)
   (* Qed. *)
   Admitted.
@@ -37,10 +36,10 @@ and gives you the computational hypothesis for the second *)
 (*       refine (a <- c; x a) (a <- c'; y a). *)
 (*   Proof. t_refine. Qed. *)
 
-(*   Lemma refine_pick A (P : A -> Prop) c (H : forall x, c ↝ x -> P x) *)
-(*     : @refine A ({x : A | P x })%comp *)
-(*               c. *)
-(*   Proof. t_refine. Qed. *)
+  (* Lemma refine_pick A (P : A -> Prop) R c (H : forall x, c ↝ x -> P x) *)
+  (*   : @refine A ({x : A | P x })%comp R *)
+  (*             c. *)
+  (* Proof. t_refine. Qed. *)
 
 (*   Lemma refine_pick_val A a (P : A -> Prop) *)
 (*     : P a -> @refine A ({x | P x })%comp *)

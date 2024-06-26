@@ -145,7 +145,7 @@ Section MethodRefinement.
   Definition refineMethod
              {dom : list Type}
              {cod : option Type}
-             R
+             (R : RCod cod)
              (oldMethod : methodType oldRep dom cod)
              (newMethod : methodType newRep dom cod)
     := forall r_o r_n,
@@ -193,7 +193,7 @@ Section MethodRefinement.
 
 End MethodRefinement.
 
-Record refineADT {Sig} (A B : ADT Sig) RCods :=
+Record refineADT {Sig} RCods (A B : ADT Sig) :=
   refinesADT {
       AbsR : _;
       ADTRefinementPreservesConstructors
