@@ -932,4 +932,3 @@ Tactic Notation "refine" "pick" "eq" :=
   | |- context[Pick (fun x => _ = x)] =>
     setoid_rewrite refine_pick_eq' || setoid_rewrite refineEquiv_pick_eq'
   end.
-Definition
