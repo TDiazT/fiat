@@ -79,7 +79,7 @@ Section HoneRepresentation.
     induction dom.
     - simpl in *; unfold refineMethod, refineMethod',
                   absMethod, absMethod', refine; intros;
-        destruct cod; [unfold refineProd | unfold refineEq]; intros; computes_to_inv.
+        destruct cod; [unfold refineProd, refineR | unfold refineEq]; intros; computes_to_inv.
       + destruct (H0 _ H) as [or' [Comp_or [AbsR_or'' eq_or''] ] ].
         exists v. repeat split.
         repeat computes_to_econstructor; eauto.

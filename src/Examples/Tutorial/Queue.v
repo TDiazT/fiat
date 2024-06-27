@@ -1,28 +1,16 @@
 
 Require Import Refinement.
 
+Require Export Fiat.Common.Coq__8_4__8_5__Compat.
 Require Import Coq.Strings.Ascii
+        Coq.Bool.Bool.
+
+Require Export Coq.Vectors.Vector
         Coq.Bool.Bool
-        Coq.Lists.List Coq.Arith.Arith
-        .
+        Coq.Bool.Bvector
+        Coq.Lists.List.
 
-Import Lists.List.ListNotations.
-Require Import
-        Fiat.ADTRefinement.BuildADTRefinements.HoneRepresentation
-        Fiat.ADTNotation.BuildComputationalADT.
-
-(* Export Coq.Vectors.Vector *)
-(*         Coq.Strings.Ascii *)
-(*         Coq.Bool.Bvector. *)
-
-
-(* Export Coq.Logic.Eqdep_dec *)
-(*         Fiat.ADT.ComputationalADT *)
-(*         Fiat.ADTNotation.BuildComputationalADT. *)
-
-
-(* Export Fiat.ADTNotation.BuildADTSig Fiat.ADTNotation.BuildADT. *)
-
+Require Export Coq.Strings.String.
 
 #[unfold_fix]
 Symbol not_implemented : forall {A}, A.
@@ -53,9 +41,131 @@ Rewrite Rules list_red_rew :=
   | _ => _
   end ==> @not_implemented (?P@{t0 := (@not_implemented (list ?A))}).
 
-(* Require Import Coq.Logic.Eqdep_dec *)
-(*         Fiat.ADT.ComputationalADT *)
-(*         Fiat.ADTNotation.BuildComputationalADT. *)
+
+Require Export Fiat.Common.DecideableEnsembles
+        Fiat.Common.List.ListFacts
+        Fiat.Common.BoolFacts
+        Fiat.Common.LogicFacts
+        Fiat.Common.List.FlattenList
+        Fiat.Common.Ensembles.IndexedEnsembles
+        Fiat.Common.IterateBoundedIndex
+        Fiat.Common.Tactics.CacheStringConstant.
+
+Require Import Coq.Logic.Eqdep_dec
+        Fiat.ADT.ComputationalADT
+        Fiat.ADTNotation.BuildComputationalADT
+        Fiat.ADTRefinement.GeneralBuildADTRefinements.
+
+Require Import Coq.Logic.Eqdep_dec
+        Fiat.ADT.ComputationalADT
+        Fiat.ADTNotation.BuildComputationalADT.
+        (* Fiat.ADTRefinement.GeneralBuildADTRefinements. *)
+
+Import Lists.List.ListNotations.
+
+
+Ltac pick := erewrite refine_pick_val by eauto.
+Ltac pick_by H := erewrite refine_pick_val by (eapply H; eauto).
+
+Hint Resolve refine_pick_val.
+Hint Rewrite <- app_nil_end.
+
+Require Import Computation.Refinements.Tactics.
+
+Lemma refineR_pick_val A R `{Reflexive A R} a (P : A -> Prop)
+  : P a -> @refineR A A R ({x | P x })%comp
+            (ret a).
+Proof.
+    t_refine.
+Qed.
+
+Ltac pick_byR H := erewrite refineR_pick_val by (eapply H; eauto).
+
+Definition testnil A B (ls : list A) (cnil ccons : B) : B :=
+  match ls with
+  | nil => cnil
+  | _ :: _ => ccons
+  end.
+
+(* There's a bug in the fold_heading code that is causes
+   Anomaly "Uncaught exception Not_found."
+   at Defined. Overwriting the following folding tactics solves this problem.
+*)
+(* Ltac fold_heading_hyps_in H ::= idtac. *)
+(* Ltac fold_heading_hyps  ::= idtac. *)
+
+Lemma refine_testnil : forall A (ls : list A) B R (c1 cnil ccons : Comp B),
+  (ls = nil -> refineR R c1 cnil)
+  -> (ls <> nil -> refineR R c1 ccons)
+  -> refineR R c1 (testnil ls cnil ccons).
+Proof.
+  destruct ls; intuition congruence.
+Qed.
+
+Add Parametric Morphism A B
+: (@testnil A (Comp B))
+    with signature
+    @eq (list A)
+      ==> @refineEq B
+      ==> @refineEq B
+      ==> @refineEq B
+      as refine_testnil_morphism.
+Proof.
+  destruct y; auto.
+Qed.
+
+Lemma refine_testnil_ret : forall A B (ls : list A) (cnil ccons : B),
+  refineEq (testnil ls (ret cnil) (ret ccons)) (ret (testnil ls cnil ccons)).
+Proof.
+  destruct ls; reflexivity.
+Qed.
+
+Ltac refine_testnil ls' := etransitivity; [ apply refine_testnil with (ls := ls'); intro | ].
+
+Definition let_ A B (v : A) (f : A -> B) := let x := v in f v.
+
+Add Parametric Morphism A B
+: (@let_ A (Comp B))
+    with signature
+    @eq A
+      ==> pointwise_relation _ (@refineEq B)
+      ==> @refineEq B
+      as refine_let_morphism.
+Proof.
+  unfold pointwise_relation, let_; auto.
+Qed.
+
+Lemma refine_let : forall A B (v : A) c1 (c2 : A -> Comp B),
+  (forall x, x = v -> refineEq c1 (c2 x))
+  -> refineEq c1 (let_ v c2).
+Proof.
+  unfold let_; auto.
+Qed.
+
+Ltac refine_let x := apply (refine_let (v := x)); intros.
+
+Lemma refine_let_ret : forall A B (v : A) (f : A -> B),
+  let_ v (fun x => ret (f x)) =  ret (let_ v f).
+Proof.
+  reflexivity.
+Qed.
+
+Ltac monad_simpl := autosetoid_rewrite with refine_monad;
+                   try simplify_with_applied_monad_laws; simpl.
+
+Hint Rewrite refine_let_ret refine_testnil_ret : cleanup.
+
+Global Opaque let_.
+
+Ltac done := try match goal with
+                 | [ |- refineEq ?a ?b ] => is_evar b; instantiate (1 := a)
+                 | [ |- refineR ?R ?a ?b ] => is_evar b; instantiate (1 := a)
+                 end; finish honing.
+
+
+Require Import Coq.Logic.Eqdep_dec
+        Fiat.ADT.ComputationalADT
+        Fiat.ADTNotation.BuildComputationalADT.
 Require Import         Fiat.Common Fiat.Computation Fiat.ADT.ADTSig Fiat.ADT.Core
         Fiat.ADT.ComputationalADT
         Fiat.Common.BoundedLookup
@@ -203,113 +313,6 @@ End ProdICP.
 
 (* Require Import Tutorial. *)
 
-(* Ltac pick := erewrite refine_pick_val by eauto. *)
-(* Ltac pick_by H := erewrite refine_pick_val by (eapply H; eauto). *)
-
-(* Hint Resolve refine_pick_val. *)
-(* Hint Rewrite <- app_nil_end. *)
-
-(* Definition testnil A B (ls : list A) (cnil ccons : B) : B := *)
-(*   match ls with *)
-(*   | nil => cnil *)
-(*   | _ :: _ => ccons *)
-(*   end. *)
-
-(* There's a bug in the fold_heading code that is causes
-   Anomaly "Uncaught exception Not_found."
-   at Defined. Overwriting the following folding tactics solves this problem.
-*)
-(* Ltac fold_heading_hyps_in H ::= idtac. *)
-(* Ltac fold_heading_hyps  ::= idtac. *)
-
-(* Lemma refine_testnil : forall A (ls : list A) B (c1 cnil ccons : Comp B), *)
-(*   (ls = nil -> refine c1 cnil) *)
-(*   -> (ls <> nil -> refine c1 ccons) *)
-(*   -> refine c1 (testnil ls cnil ccons). *)
-(* Proof. *)
-(*   destruct ls; intuition congruence. *)
-(* Qed. *)
-
-(* Add Parametric Morphism A B R `{Equivalence (Comp B) R} *)
-(* : (@testnil A (Comp B)) *)
-(*     with signature *)
-(*     @eq (list A) *)
-(*       ==> @refine B B R *)
-(*       ==> @refine B B R *)
-(*       ==> @refine B B R *)
-(*       as refine_testnil_morphism. *)
-(* Proof. *)
-(*   destruct y; auto. *)
-(* Qed. *)
-
-(* Lemma refine_testnil_ret : forall A B (ls : list A) (cnil ccons : B), *)
-(*   refine (testnil ls (ret cnil) (ret ccons)) (ret (testnil ls cnil ccons)). *)
-(* Proof. *)
-(*   destruct ls; reflexivity. *)
-(* Qed. *)
-
-(* Ltac refine_testnil ls' := etransitivity; [ apply refine_testnil with (ls := ls'); intro | ]. *)
-
-(* Definition let_ A B (v : A) (f : A -> B) := let x := v in f v. *)
-
-(* Add Parametric Morphism A B *)
-(* : (@let_ A (Comp B)) *)
-(*     with signature *)
-(*     @eq A *)
-(*       ==> pointwise_relation _ (@refine B) *)
-(*       ==> @refine B *)
-(*       as refine_let_morphism. *)
-(* Proof. *)
-(*   unfold pointwise_relation, let_; auto. *)
-(* Qed. *)
-
-(* Lemma refine_let : forall A B (v : A) c1 (c2 : A -> Comp B), *)
-(*   (forall x, x = v -> refine c1 (c2 x)) *)
-(*   -> refine c1 (let_ v c2). *)
-(* Proof. *)
-(*   unfold let_; auto. *)
-(* Qed. *)
-
-(* Ltac refine_let x := apply (refine_let (v := x)); intros. *)
-
-(* Lemma refine_let_ret : forall A B (v : A) (f : A -> B), *)
-(*   let_ v (fun x => ret (f x)) =  ret (let_ v f). *)
-(* Proof. *)
-(*   reflexivity. *)
-(* Qed. *)
-
-(* Ltac monad_simpl := autosetoid_rewrite with refine_monad; *)
-(*                    try simplify_with_applied_monad_laws; simpl. *)
-
-(* Hint Rewrite refine_let_ret refine_testnil_ret : cleanup. *)
-
-(* Global Opaque let_. *)
-
-(* Ltac done := try match goal with *)
-(*                  | [ |- refine ?a ?b ] => is_evar b; instantiate (1 := a) *)
-(*                  end; finish honing. *)
-(* Ltac cleanup := autorewrite with cleanup. *)
-(* Ltac finalize := finish_SharpeningADT_WithoutDelegation. *)
-
-(* Lemma tl_cons : forall A (x : A) ls1 ls2, *)
-(*   x :: ls1 = ls2 *)
-(*   -> ls1 = tl ls2. *)
-(* Proof. *)
-(*   destruct ls2; simpl; congruence. *)
-(* Qed. *)
-
-(* Hint Resolve tl_cons. *)
-
-(* Lemma appendone_contra : forall A (ls : list A) x, ls ++ x :: nil = nil *)
-(*   -> False. *)
-(* Proof. *)
-(*   intros. *)
-(*   apply (f_equal (@length _)) in H. *)
-(*   rewrite app_length in H. *)
-(*   simpl in *; omega. *)
-(* Qed. *)
-
-(* Hint Immediate appendone_contra. *)
 
 Reserved Infix "⊑o" (at level 10).
 Inductive refinement_option {A} `{Refinable A} : option A -> option A -> Prop :=
@@ -357,7 +360,6 @@ Section data.
     {
       rep := (list data),
       (* This first part is the abstract representation type. *)
-
       Def Constructor0 "empty" : rep :=
         ret nil,,
       Def Method1 "enqueue" (self : rep) (d : data) : rep :=
@@ -415,6 +417,10 @@ Section data.
   Proof.
     reflexivity.
   Qed.
+  Lemma absRel_nil_not_impl : forall l, absRel_mono l (nil, ?).
+  Proof.
+    induction l using list_catch; cbn; eauto; constructor.
+  Qed.
 
   (* The simple implementation of "push" preserves the relation. *)
   Lemma absRel_push : forall d abs conc, absRel_mono abs conc
@@ -471,11 +477,12 @@ Section data.
   Proof.
     unfold absRel; destruct abs; simpl; intros.
     destruct (snd conc); simpl in *; intuition.
-    apply (f_equal (@length _)) in H.
-    repeat rewrite app_length in H; simpl in H.
-    omega.
-    auto.
-  Qed.
+    (* apply (f_equal (@length _)) in H. *)
+    (* repeat rewrite app_length in H; simpl in H. *)
+    (* omega. *)
+    (* auto. *)
+  (* Qed. *)
+  Admitted.
 
   (* The case for preserving the relation on "pop",
    * when we need to reverse the second list. *)
@@ -525,76 +532,71 @@ Section data.
     destruct (fst conc); simpl in *; tauto.
   Qed.
 
-Definition testnil A B (ls : list A) (cnil ccons : B) : B :=
-  (* this should be a catch *)
-  match ls with
-  | nil => cnil
-  | _ :: _ => ccons
-  end.
 
-Inductive IsCons A : list A -> Prop :=
-| IsConsCons : forall hd tl, IsCons (hd :: tl).
-
-
-(* Lemma refine_testnil : forall A (ls : list A) B (c1 cnil ccons : Comp B), *)
-(* (* Lemma refine_testnil : forall A (ls : list A) dummy B (c1 cnil ccons cnimpl : Comp B), *) *)
-(*     (* Should have cnil and catch tbh *) *)
-(*   (ls = nil -> refine c1 cnil) *)
-(*   -> (IsCons ls -> refine c1 ccons) *)
-(*   -> (ls = ? -> refine c1 ?) *)
-(*   -> refine c1 (testnil ls cnil ccons). *)
-(* Proof. *)
-(*   intros ? ls. *)
-(*   induction ls as [| hd tl IH|] using list_catch; intros; try intuition congruence. *)
-(*   - simpl. apply H0. constructor. *)
-(*   (* try intuition congruence. *) *)
-(*   (* destruct ls; intuition congruence. *) *)
-(* (* Qed. *) *)
-(* Admitted. *)
-
-(* Ltac refine_testnil ls' := etransitivity; [ apply refine_testnil with (ls := ls') ; intro | ]. *)
-
+Require Import BuildADTRefinements.HoneRepresentation.
 Definition RSig : forall (idx : MethodIndex sig), Core.RCod (snd (MethodDomCod sig idx) ) .
-  simpl. intros idx.
-  (* induction idx. *)
-  (* dependent induction idx. *)
-  (* dependent destruction idx. *)
-  depelim idx.
-  (* Enqueue *)
+  repeat refine (fun idx => proj1_sig (cons_RCods _ _ idx)).
   - simpl. exact tt.
-  (* Dequeue *)
   - simpl.
-    depelim idx.
-    (* dependent destruction idx. *)
-    2: inversion idx.
-    simpl.
     exact refinableOption.(refinement).
+  -  eapply empty_RCods.
 Defined.
 
 
-Require Import Fiat.Computation.ApplyMonad.
-
-Ltac monad_simpl := autosetoid_rewrite with refine_monad;
-                   try simplify_with_applied_monad_laws; simpl.
-
-Ltac refine_constr :=
-  eapply refine_Constructors_cons;
+Ltac refineConstr :=
+  repeat (first [eapply refine_Constructors_nil
+                    | eapply refine_Constructors_cons;
                       [ intros; simpl; intros;
                         match goal with
-                        |  |- refineEq _ (?E _ _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
-                        |  |- refineEq _ (?E _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
-                        |  |- refineEq _ (?E _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
-                        |  |- refineEq _ (?E _ _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
-                        |  |- refineEq _ (?E _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
-                        |  |- refineEq _ (?E _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
-                        |  |- refineEq _ (?E _ _) => is_evar E; let H := fresh in fast_set (H := E)
-                        |  |- refineEq _ (?E _) => is_evar E; let H := fresh in fast_set (H := E)
-                        |  |- refineEq _ (?E) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refine _ (?E _ _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refine _ (?E _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refine _ (?E _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refine _ (?E _ _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refine _ (?E _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refine _ (?E _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refine _ (?E _ _) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refine _ (?E _) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refine _ (?E) => is_evar E; let H := fresh in fast_set (H := E)
                         | _ => idtac
-                        end | ].
+                        end | ] ]).
+(* Tactic Notation "hone" "representation" "using" open_constr(AbsR') := *)
+(*   eapply SharpenStep; *)
+(*   [eapply refineADT_BuildADT_Rep_refine_All with (AbsR := AbsR'); *)
+(*     [ repeat (first [eapply refine_Constructors_nil *)
+(*                     | eapply refine_Constructors_cons; *)
+(*                       [ intros; simpl; intros; *)
+(*                         match goal with *)
+(*                         |  |- refine _ (?E _ _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
+(*                         |  |- refine _ (?E _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
+(*                         |  |- refine _ (?E _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
+(*                         |  |- refine _ (?E _ _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E) *)
+(*                         |  |- refine _ (?E _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E) *)
+(*                         |  |- refine _ (?E _ _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
+(*                         |  |- refine _ (?E _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
+(*                         |  |- refine _ (?E _) => is_evar E; let H := fresh in fast_set (H := E) *)
+(*                         |  |- refine _ (?E) => is_evar E; let H := fresh in fast_set (H := E) *)
+(*                         | _ => idtac *)
+(*                         end | ] ]) *)
+(*     | repeat (first [eapply refine_Methods_nil *)
+(*                     | eapply refine_Methods_cons; *)
+(*                       [ intros; simpl; intros; *)
+(*                         match goal with *)
+(*                         |  |- refine _ (?E _ _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
+(*                         |  |- refine _ (?E _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
+(*                         |  |- refine _ (?E _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
+(*                         |  |- refine _ (?E _ _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E) *)
+(*                         |  |- refine _ (?E _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E) *)
+(*                         |  |- refine _ (?E _ _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
+(*                         |  |- refine _ (?E _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
+(*                         |  |- refine _ (?E _) => is_evar E; let H := fresh in fast_set (H := E) *)
+(*                           | _ => idtac *)
+(*                         end | ] *)
+(*                     ])] *)
+(*   | ]. *)
+
 Tactic Notation "hone" "representation" "using" open_constr(AbsR') :=
   eapply SharpenStep;
-  [eapply refineADT_BuildADT_Rep_refine_All with (AbsR := AbsR');
+  [idtac|eapply refineADT_BuildADT_Rep_refine_All with (AbsR := AbsR');
     [ repeat (first [eapply refine_Constructors_nil
                     | eapply refine_Constructors_cons;
                       [ intros; simpl; intros;
@@ -610,89 +612,131 @@ Tactic Notation "hone" "representation" "using" open_constr(AbsR') :=
                         |  |- refine _ (?E) => is_evar E; let H := fresh in fast_set (H := E)
                         | _ => idtac
                         end | ] ])
-    |
-      (* repeat (first [eapply refine_Methods_nil *)
-      (*               | eapply refine_Methods_cons; *)
-      (*                 [ intros; simpl; intros; *)
-      (*                   match goal with *)
-      (*                   |  |- refine _ (?E _ _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
-      (*                   |  |- refine _ (?E _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
-      (*                   |  |- refine _ (?E _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
-      (*                   |  |- refine _ (?E _ _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E) *)
-      (*                   |  |- refine _ (?E _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E) *)
-      (*                   |  |- refine _ (?E _ _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
-      (*                   |  |- refine _ (?E _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
-      (*                   |  |- refine _ (?E _) => is_evar E; let H := fresh in fast_set (H := E) *)
-      (*                     | _ => idtac *)
-      (*                   end | ] *)
-      (*   ]) *)
-    ]
+    | repeat (first [eapply refine_Methods_nil
+                    | eapply refine_Methods_cons;
+                      [ intros; simpl; unfold refineMethod, refineMethod'; intros;
+                        match goal with
+                        |  |- refine _ _ (?E _ _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refine _ _ (?E _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refine _ _ (?E _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refine _ _ (?E _ _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refine _ _ (?E _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refine _ _ (?E _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refine _ _ (?E _ _) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refine _ _ (?E _) => is_evar E; let H := fresh in fast_set (H := E)
+                          | _ => idtac
+                        end | ]
+                    ])]
   | ].
+
+
+Instance option_Reflexive {A} `{Reflexive A} `{Refinable A} : Reflexive (refinableOption.(@refinement (option A))). Admitted.
+  (* Instance rprodreflexive {A B C D} (R1 : A -> B -> Prop) (R2 : C -> D -> Prop) `{Reflexive R1} `{Reflexive R2} : Reflexive (R1 ) *)
+
+Instance refineProd_Reflexive A B (R : A -> A -> Prop) `{Reflexive A R} : Reflexive (@refineProd A A B R ).
+Admitted.
+
+Instance refineProd_Transitive A B (R : A -> A -> Prop) `{Transitive A R} : Transitive (@refineProd A A B R ).
+Admitted.
+
+Instance refineR_Transitive A (R : A -> A -> Prop) `{Transitive A R} : Transitive (refineR R ).
+(* t. *)
+(* Qed. *)
+Admitted.
+
+  Axiom (nil_neq_app_cons : forall {A} l (d : A), [] <> l ++ [d]).
+  Axiom (nil_neq_app_not_empty : forall {A} (l l' : list A), l <> nil -> [] <> l ++ l').
+
+  Ltac refineEqOldSimpl := eapply refineEquiv_refine_proper; monad_simpl.
+
+  Ltac cleanup := autorewrite with cleanup.
+  (* Ltac finalize := finish_SharpeningADT_WithoutDelegation. *)
+
+(* Ltac finish_SharpeningADT_WithoutDelegation := *)
+(*   eapply FullySharpened_Finish; *)
+(*   [ FullySharpenEachMethod *)
+(*       (@Vector.nil ADTSig) *)
+(*       (@Vector.nil Type) *)
+(*       (ilist.inil (B := fun nadt => ADT (delegateeSig nadt))); *)
+(*     try simplify with monad laws; simpl; try refine pick eq; try simplify with monad laws; *)
+(*     try first [ simpl]; *)
+(*     (* Guard setoid rewriting with [refine_if_If] to only occur when there's *) *)
+(* (*     actually an [if] statement in the goal.  This prevents [setoid_rewrite] from *) *)
+(* (*     uselessly descending into folded definitions. *) *)
+(*     repeat lazymatch goal with *)
+(*              | [ |- context [ if _ then _ else _ ] ] => *)
+(*                setoid_rewrite refine_if_If at 1 *)
+(*            end; *)
+(*     repeat first [ *)
+(*              higher_order_reflexivity *)
+(*            | simplify with monad laws *)
+(*            | Implement_If_Then_Else *)
+(*            | Implement_If_Opt_Then_Else ] *)
+(*   | extract_delegate_free_impl *)
+(*   | simpl; higher_order_reflexivityT ]. *)
+
   (* Now we start deriving an implementation, in a correct-by-construction way. *)
+
   Theorem implementation : FullySharpened RSig spec .
   Proof.
     start sharpening ADT.
 
-    (* hone representation using absRel_mono. *)
+    hone representation using absRel_mono.
 
-    eapply SharpenStep.
-    -  simpl. admit.
-    -
-    eapply HoneRepresentation.refineADT_BuildADT_Rep_refine_All with (AbsR := absRel_mono).
+    admit.
 
-    * refine_constr.
-      rewrite refineEquiv_bind_unit.
-      (* eapply refine_Constructors_cons; intros; simpl; intros. *)
+    - monad_simpl.
 
-      monad_simpl.
       pick_by (absRel_implies_mono absRel_initial).
       done.
 
     (* Enqueue *)
-    - monad_simpl.
+    -
+      monad_simpl.
       pick_by absRel_push.
       done.
 
     (* Dequeue *)
     - refine_testnil (fst r_n).
-      * refine_testnil (snd r_n).
-      + assert (r_o = nil) by (eapply absRel_must_be_nil; eauto).
-        subst.
-        monad_simpl.
-        pick_by (absRel_implies_mono absRel_initial).
-        monad_simpl.
-        done.
-      + refine_let (rev (snd r_n)).
+      + refine_testnil (snd r_n).
+        * assert (r_o = nil) by (eapply absRel_must_be_nil; eauto).
+          subst.
+          refineEqOldSimpl; [reflexivity|].
+          refineEqOldSimpl.
+          pick_by (absRel_implies_mono absRel_initial).
+          done.
+          refineEqOldSimpl.
+          done.
+          done.
+        * pose (Habs := H0). clearbody Habs.
+          cbn in H0. rewrite H1 in H0. cbn in H0.
+          inversion H0; subst.
+          ** refineEqOldSimpl. pick_by absRel_nil_not_impl. monad_simpl. done.
+             instantiate (1 := (ret ([], ?, ?))).
+             unfold refineR. intros. destruct H3.
+             exists ([], ?, None). repeat split; eauto.
+             cbn. constructor.
+          ** refineEqOldSimpl. pick_by absRel_nil_not_impl.
+             monad_simpl. done.
+             unfold refineR. intros. destruct H5.
+             exists ([], ?, Some a1). cbn. repeat split; eauto. constructor.
+          ** rewrite <- H5 in H0.
+             admit.
+        * done.
+      + inversion H0.
+        * apply nil_neq_app_not_empty in H4; eauto. contradiction.
+        * refineEqOldSimpl. pick_by absRel_nil_not_impl. monad_simpl. done.
+          instantiate (1 := (ret ([], ?, ?))).
+          unfold refineR. intros. destruct H6.
+          exists ([], ?, Some a1). cbn. repeat split; eauto. constructor.
+        * unfold absRel in H0; cbn in H0. rewrite <- H4 in H0.
+          admit.
+      + done.
 
-        unfold absRel_mono in H0. simpl in H0.
-        rewrite H1 in H0. simpl in H0.
-        inversion H2; subst. rewrite <- H5 in H0.
-        simpl in H0.
-        rewrite H2 in H0. simpl in H0.
+    - eapply FullySharpened_Finish.
+      admit.
 
-        erewrite eta_abs_snd with (abs := r_o) by eauto.
-        monad_simpl.
-        pick_by absRel_reversed_rep.
-        monad_simpl.
-        erewrite absRel_reversed_data by eauto.
-        done.
-
-    cbv beta.
-    done.
-
-    erewrite eta_abs_fst with (abs := r_o) by eauto.
-    monad_simpl.
-    pick_by absRel_fast_rep.
-    monad_simpl.
-    erewrite absRel_fast_data with (abs := r_o) by eauto.
-    done.
-
-    rewrite refine_let_ret.
-    rewrite refine_testnil_ret.
-    rewrite refine_testnil_ret.
-    done.
-
-    finalize.
+      finalize.
   Defined.
 
   (* We can now extract a standlone Gallina term for this ADT. *)

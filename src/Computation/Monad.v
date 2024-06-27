@@ -56,7 +56,22 @@ End monad.
 (** [Comp] also obeys the monad laws using both [refineEquiv]
     as our notions of equivalence. *)
 
+Lemma refineEquiv_refine_proper X R (c c' c'' : Comp X)
+  : refineEq c' c ->
+    refineR R c c'' ->
+    refineR R c' c''.
+Proof.
+  intros H1.
+  unfold refineR.
+  intros Href x Hcx.
+  destruct (Href x Hcx) as [x' [Hcx' HR]].
+  unfold refineEq in *.
+  exists x'. split; eauto.
+Qed.
+
+
 Section monad_refine.
+
   Lemma refineEquiv_bind_bind X Y Z (f : X -> Comp Y) (g : Y -> Comp Z) x
   : refineEquiv (Bind (Bind x f) g)
                 (Bind x (fun u => Bind (f u) g)).

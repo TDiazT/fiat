@@ -70,7 +70,7 @@ Definition FullySharpenedUnderDelegates
 (* Shiny New Sharpened Definition includes proof that the
    ADT produced is sharpened modulo a set of 'Delegated ADTs'. *)
 
-Notation Sharpened spec := (@refineADT _ spec _).
+Notation Sharpened spec := (@refineADT _ _ spec _).
 
 Definition MostlySharpened {Sig} RCods spec :=
   {adt : _ & prod (refineADT RCods spec (fst adt)) (@FullySharpenedUnderDelegates Sig RCods (fst adt) (snd adt))}.

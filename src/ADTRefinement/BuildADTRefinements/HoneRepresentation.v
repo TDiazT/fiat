@@ -461,7 +461,7 @@ Arguments DecADTSig : simpl never.
  each of the operations. *)
 Tactic Notation "hone" "representation" "using" open_constr(AbsR') :=
   eapply SharpenStep;
-  [eapply refineADT_BuildADT_Rep_refine_All with (AbsR := AbsR');
+  [idtac|eapply refineADT_BuildADT_Rep_refine_All with (AbsR := AbsR');
     [ repeat (first [eapply refine_Constructors_nil
                     | eapply refine_Constructors_cons;
                       [ intros; simpl; intros;

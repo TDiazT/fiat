@@ -138,11 +138,11 @@ Definition refineEq {A}
 (* A definition and notation for pretty printing the goals used to
    interactively deriving refinements. *)
 
-Definition Refinement_Of {A} (R : Comp A -> Comp A -> Prop) (c : Comp A) :=
-  {c' | refine R c c'}.
+Definition Refinement_Of {A} (c : Comp A) :=
+  {c' | refineEq c c'}.
 
 Notation "'Refinement' 'of' c" :=
-  {c' | refine eq c c'}
+  {c' | refineEq c c'}
     (at level 0, no associativity,
      format "'Refinement'  'of' '/' '[v'    c ']' " )
   : comp_scope.
@@ -160,15 +160,16 @@ Local Ltac t := repeat first [ solve [ unfold computes_to in *; eauto ]
                                         | split
                                         | progress split_and ].
 
-Global Instance refine_PreOrder A (R : Comp A -> Comp A -> Prop) `{PreOrder (Comp A) R} : PreOrder (@refine A A R).
+Instance refineR_Reflexive A (R : A -> A -> Prop) `{Reflexive A R} : Reflexive (refineR R ).
+(* t. *)
+(* Qed. *)
+Admitted.
+
+Global Instance refineEq_PreOrder A : PreOrder (@refineEq A) | 1.
 t.
 Qed.
 
-Global Instance refineEq_PreOrder A (R : Comp A -> Comp A -> Prop) : PreOrder (@refineEq A).
-t.
-Qed.
-
-Global Instance refineEquiv_Equivalence A : Equivalence (@refineEquiv A).
+Global Instance refineEquiv_Equivalence A : Equivalence (@refineEquiv A) | 1.
 t.
 Qed.
 
@@ -194,12 +195,12 @@ Ltac computes_to_inv :=
 
 Ltac computes_to_econstructor :=
   first
-    [ unfold refine; intros; eapply @ReturnComputes
-    | unfold refine; intros; eapply @BindComputes
-    | unfold refine; intros; eapply @PickComputes ].
+    [ unfold refineEq; intros; eapply @ReturnComputes
+    | unfold refineEq; intros; eapply @BindComputes
+    | unfold refineEq; intros; eapply @PickComputes ].
 
 Ltac computes_to_constructor :=
   first
-    [ unfold refine; intros; apply @ReturnComputes
-    | unfold refine; intros; apply @BindComputes
-    | unfold refine; intros; apply @PickComputes ].
+    [ unfold refineEq; intros; apply @ReturnComputes
+    | unfold refineEq; intros; apply @BindComputes
+    | unfold refineEq; intros; apply @PickComputes ].

@@ -89,9 +89,7 @@ Section MethodRefinement.
 
 
   Definition refineProd {A B X} (R : A -> B -> Prop )
-           (old : Comp (X * A))
-           (new : Comp (X * B))
-  := forall v, new ↝ v -> exists v', old ↝ v' /\ fst v' = fst v /\ R (snd v') (snd v).
+    := refineR  (fun (v : X * A) (v' : X * B) => fst v = fst v' /\ R (snd v) (snd v')).
 
   Definition RCod (cod : option Type) : Type :=
     match cod with
