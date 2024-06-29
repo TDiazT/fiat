@@ -14,8 +14,11 @@ Section HoneRepresentation.
   Variable newRep : Type. (* The new representation type. *)
 
   (* The abstraction relation between old and new representations. *)
-  Variable AbsR : oldRep -> newRep -> Prop.
-  Local Infix "≃" := (AbsR) (at level 70).
+  Variable AbsR_mono : oldRep -> newRep -> Prop.
+  Variable AbsR_anti : oldRep -> newRep -> Prop.
+
+  Local Notation "ro ⪯ rn" := (AbsR_mono ro rn) (at level 70).
+  Local Notation "ro ⪰ rn" := (AbsR_anti ro rn) (at level 70).
 
   (* When switching representations, we can always build a default
      implementation (computation?) for the methods of an ADT by
@@ -38,16 +41,16 @@ Section HoneRepresentation.
       | Some cod' =>
         fun oldMethod nr =>
           {nr' | forall or,
-              or ≃ nr ->
+              or ⪰ nr ->
               exists or',
                 (oldMethod or) ↝ or' /\
-                fst or' ≃ fst nr' /\ snd or' = snd nr'}%comp
+                fst or' ⪯ fst nr' /\ snd or' = snd nr'}%comp
       | None =>
         fun oldMethod nr =>
           {nr' | forall or,
-              or ≃ nr ->
+              or ⪰ nr ->
               exists or',
-                (oldMethod or) ↝ or' /\ or' ≃ nr'}%comp
+                (oldMethod or) ↝ or' /\ or' ⪯ nr'}%comp
       end
       | cons d dom' =>
       fun oldMethod nr t =>
@@ -72,7 +75,7 @@ Section HoneRepresentation.
         (cod : option Type)
         (R : RCod cod) {HR : RCodReflexive cod R}
         (oldMethod : methodType oldRep dom cod)
-  : @refineMethod oldRep newRep AbsR _ _ R
+  : @refineMethod oldRep newRep AbsR_mono AbsR_anti _ _ R
                    oldMethod
                    (absMethod oldMethod).
   Proof.
@@ -127,7 +130,7 @@ Section HoneRepresentation.
     | nil =>
       fun oldConstr =>
       {nr | exists or', oldConstr ↝ or' /\
-                        or' ≃ nr }%comp
+                        or' ⪯ nr }%comp
     | cons d dom' =>
       fun oldConstr t =>
         @absConstructor dom' (oldConstr t)
@@ -136,7 +139,7 @@ Section HoneRepresentation.
   Lemma refine_absConstructor
         (dom : list Type)
         (oldConstr : constructorType oldRep dom)
-  : @refineConstructor oldRep newRep AbsR _ oldConstr
+  : @refineConstructor oldRep newRep AbsR_mono _ oldConstr
                     (absConstructor oldConstr).
   Proof.
     induction dom; simpl in *.

@@ -30,6 +30,7 @@ Definition RCodPreOrderT (cod : option Type) (R : RCod cod) :=
   | Some _ => fun R => PreOrderT R
   | _ => fun _  => unit
   end R.
+
 (* Definition RCodRel (cod : option Type) (R : RCod cod) := *)
 (*   match cod as c return RCod c -> (RCod c -> Prop) -> Type with *)
 (*   | Some _ => fun R P => P R *)
@@ -39,7 +40,7 @@ Definition RCodPreOrderT (cod : option Type) (R : RCod cod) :=
 #[global]
   Instance refineMethod_refl rep Dom Cod (R : RCod Cod)
   {HR : RCodReflexive Cod R}
-: Reflexive (@refineMethod rep rep eq Dom Cod R).
+: Reflexive (@refineMethod rep rep eq eq Dom Cod R).
 Proof.
   unfold refineMethod, methodType. intro. simpl. intros. subst.
   remember (x r_n).
@@ -104,12 +105,13 @@ Proof.
 Qed.
 
 Lemma refineMethod_trans rep rep' rep'' Dom Cod
-      AbsR AbsR'
+      AbsR AbsR_Anti AbsR' AbsR_Anti'
       (R : RCod Cod) {HR : RCodTransitive Cod R}
   : forall m m' m'',
-    @refineMethod rep rep' AbsR Dom Cod R m m'
-    -> @refineMethod rep' rep'' AbsR' Dom Cod R m' m''
+    @refineMethod rep rep' AbsR AbsR_Anti Dom Cod R m m'
+    -> @refineMethod rep' rep'' AbsR' AbsR_Anti'  Dom Cod R m' m''
     -> refineMethod (fun r_o r_n => exists r_o', AbsR r_o r_o' /\ AbsR' r_o' r_n)
+        (fun r_o r_n => exists r_o', AbsR_Anti r_o r_o' /\ AbsR_Anti' r_o' r_n)
                          R m m''.
 Proof.
   unfold refineMethod, methodType; induction Dom.
@@ -141,12 +143,12 @@ Proof.
 Qed.
 
 Lemma refineMethod_eq_trans rep rep' Dom Cod
-      AbsR
+      AbsR AbsR_Anti
       (R : RCod Cod) {HR : RCodTransitive Cod R}
   : forall m m' m'',
-    @refineMethod rep rep' AbsR Dom Cod R m m'
+    @refineMethod rep rep' AbsR AbsR_Anti Dom Cod R m m'
     -> @refineMethod_eq rep' Dom Cod m' m''
-    -> refineMethod AbsR R m m''.
+    -> refineMethod AbsR AbsR_Anti R m m''.
 Proof.
   unfold refineMethod, methodType; induction Dom.
   - intro; simpl; intros; destruct Cod; subst; intros v Comp_v.
@@ -168,7 +170,7 @@ Qed.
 #[global]
 Instance refineMethod_trans' rep Dom Cod
 (R : RCod Cod) {HR : RCodTransitive Cod R}
-: Transitive (@refineMethod rep rep eq Dom Cod R).
+: Transitive (@refineMethod rep rep eq eq Dom Cod R).
 Proof.
 (*   unfold refineMethod, methodType; subst; induction Dom. *)
 (*   - intro; intros. *)
@@ -262,6 +264,7 @@ Qed.
 
 Lemma refineADT_Build_ADT_Rep Sig oldRep newRep
       (AbsR : oldRep -> newRep -> Prop)
+      (AbsR_Anti : oldRep -> newRep -> Prop)
       RCods
 :
   (@respectful_heteroT
@@ -288,7 +291,7 @@ Lemma refineADT_Build_ADT_Rep Sig oldRep newRep
                    (fun _ => ADT Sig)
                    (fun obs obs' =>
                       forall obsIdx : MethodIndex Sig,
-                        @refineMethod oldRep newRep AbsR
+                        @refineMethod oldRep newRep AbsR AbsR_Anti
                                         (fst (MethodDomCod Sig obsIdx))
                                         (snd (MethodDomCod Sig obsIdx))
                                         (RCods obsIdx)
@@ -313,7 +316,7 @@ Qed.
 
 Lemma refineADT_Build_ADT_Method rep Sig RCods cs
 : forall ms ms',
-    (forall idx, @refineMethod _ _ eq
+    (forall idx, @refineMethod _ _ eq eq
                                  (fst (MethodDomCod Sig idx))
                                  (snd (MethodDomCod Sig idx))
                                  (RCods idx)
@@ -348,7 +351,7 @@ Qed.
 
 Lemma refineADT_Build_ADT_Both rep Sig RCods
 : forall ms ms',
-    (forall idx, @refineMethod _ _ eq
+    (forall idx, @refineMethod _ _ eq eq
                                  (fst (MethodDomCod Sig idx))
                                  (snd (MethodDomCod Sig idx))
                                  (RCods idx)

@@ -9,9 +9,11 @@ Section MethodRefinement.
   Variables oldRep newRep : Type.
 
   (** Abstraction Relation *)
-  Variable AbsR : oldRep -> newRep -> Prop.
+  Variable AbsR_mono : oldRep -> newRep -> Prop.
+  Variable AbsR_anti : oldRep -> newRep -> Prop.
 
-  Notation "ro ≃ rn" := (AbsR ro rn) (at level 70).
+  Notation "ro ⪯ rn" := (AbsR_mono ro rn) (at level 70).
+  Notation "ro ⪰ rn" := (AbsR_anti ro rn) (at level 70).
 
   (** Refinement of a constructor: the computation produced by
    a constructor [newConstructor] should be a refinement
@@ -40,7 +42,7 @@ Section MethodRefinement.
     with
     | nil => fun oldConstructor newConstructor =>
                refineEq (r_o' <- oldConstructor;
-                       {r_n | r_o' ≃ r_n})
+                       {r_n | r_o' ⪯ r_n})
                       (newConstructor)
     | cons D dom' =>
       fun oldConstructor newConstructor =>
@@ -93,7 +95,7 @@ Section MethodRefinement.
 
   Definition RCod (cod : option Type) : Type :=
     match cod with
-    | Some cod' => cod' -> cod' -> Prop
+    | Some cod' =>  cod' ->  cod' -> Prop
     | _ =>  unit
     end.
 
@@ -118,17 +120,15 @@ Section MethodRefinement.
       with
       | Some cod' =>
         fun R oldMethod newMethod =>
-          refine (refineProd R)
-            (r_o' <- oldMethod;
-             r_n' <- {r_n | fst r_o' ≃ r_n};
-             ret (r_n', snd r_o'))
+          refineProd R (r_o' <- oldMethod;
+                        r_n' <- {r_n | fst r_o' ⪯ r_n};
+                        ret (r_n', snd r_o'))
             newMethod
       | None =>
         fun R oldMethod newMethod =>
-          refineEq
-            (r_o' <- oldMethod;
-                  {r_n | r_o' ≃ r_n})
-                 newMethod
+          refineEq (r_o' <- oldMethod;
+                        {r_n | r_o' ⪯ r_n})
+            newMethod
       end) R
     | cons D dom' =>
       fun oldMethod newMethod =>
@@ -144,7 +144,7 @@ Section MethodRefinement.
              (oldMethod : methodType oldRep dom cod)
              (newMethod : methodType newRep dom cod)
     := forall r_o r_n,
-      r_o ≃ r_n ->
+      r_o ⪰ r_n ->
       @refineMethod' dom cod R (oldMethod r_o) (newMethod r_n).
 
     Fixpoint refineMethod_eq'
@@ -191,6 +191,7 @@ End MethodRefinement.
 Record refineADT {Sig} RCods (A B : ADT Sig) :=
   refinesADT {
       AbsR : _;
+      AbsR_Anti : _;
       ADTRefinementPreservesConstructors
       : forall idx : ConstructorIndex Sig,
           @refineConstructor
@@ -201,7 +202,7 @@ Record refineADT {Sig} RCods (A B : ADT Sig) :=
       ADTRefinementPreservesMethods
       : forall idx : MethodIndex Sig,
           @refineMethod
-            (Rep A) (Rep B) AbsR
+            (Rep A) (Rep B) AbsR AbsR_Anti
             (fst (MethodDomCod Sig idx))
             (snd (MethodDomCod Sig idx))
             (RCods idx)

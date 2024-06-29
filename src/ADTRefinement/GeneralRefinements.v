@@ -250,6 +250,16 @@ Definition SharpenFully {Sig} RCods
           : forall (idx : Fin.t DelegateIDs) RCods,
              refineADT RCods (DelegateSpecs idx)
                        (LiftcADT (existT _ _ (DelegateImpls idx)))),
+         Rep spec -> rep DelegateReps -> Prop)
+    (cAbsR_Anti :
+       forall
+         (DelegateReps : Fin.t DelegateIDs -> Type)
+         (DelegateImpls : forall idx,
+             pcADT (DelegateSigs idx) (DelegateReps idx))
+         (ValidImpls
+          : forall (idx : Fin.t DelegateIDs) RCods,
+             refineADT RCods (DelegateSpecs idx)
+                       (LiftcADT (existT _ _ (DelegateImpls idx)))),
          Rep spec -> rep DelegateReps -> Prop),
     (forall
         (DelegateReps : Fin.t DelegateIDs -> Type)
@@ -275,7 +285,7 @@ Definition SharpenFully {Sig} RCods
                          (LiftcADT (existT _ _ (DelegateImpls idx)))),
            forall idx,
              @refineMethod
-               (Rep spec) (rep DelegateReps) (cAbsR _ _ ValidImpls)
+               (Rep spec) (rep DelegateReps) (cAbsR _ _ ValidImpls) (cAbsR_Anti _ _ ValidImpls)
                (fst (MethodDomCod Sig idx)) (snd (MethodDomCod Sig idx))
                (RCods idx)
                (Methods spec idx)
@@ -458,13 +468,14 @@ Lemma cMethods_AbsR {Sig} RCods {spec : ADT Sig}
       midx
       (r_o : Rep spec)
       (r_n : cRep (projT1 impl))
-      (Abs : AbsR (projT2 impl) r_o r_n)
+      (Abs : AbsR_Anti (projT2 impl) r_o r_n)
   :
     @Lift_Method2P _ _ _ _
                    (fun _ Meth cMeth =>
                       exists r_o',
                         computes_to Meth (r_o', (snd cMeth))
-                        /\ AbsR (projT2 impl) r_o' (fst cMeth))
+                        /\ AbsR (projT2 impl) r_o' (fst cMeth)
+                   )
                    (fun Meth cMeth =>
                       exists r_o',
                         computes_to Meth (r_o')
@@ -473,18 +484,18 @@ Lemma cMethods_AbsR {Sig} RCods {spec : ADT Sig}
                    (cMethods (projT1 impl) midx r_n).
 Proof.
   simpl in *.
-  generalize  (ADTRefinementPreservesMethods (projT2 impl) midx _ _ Abs).
+  generalize  (ADTRefinementPreservesMethods (projT2 impl) midx _ _ Abs ).
   intro.
 (*   eapply Lift_Method2P_ind with *)
 (*     (P'' := fun dom cod meth (cMeth : cMethodType' _ dom cod) => *)
-(*               refineMethod  (AbsR (projT2 impl)) (RCods midx) meth (LiftcMethod' _ dom cod cMeth)) ; simpl; intros; eauto. *)
+(*               refineMethod  (AbsR (projT2 impl)) (AbsR_Anti (projT2 impl)) (RCods midx) meth (LiftcMethod' _ dom cod cMeth)) ; simpl; intros; eauto. *)
 (*   - revert H0; clear;  destruct (MethodDomCod Sig midx) as [? [? |] ]; *)
 (*     simpl; intros; *)
 (*     specialize (H0 _ (ReturnComputes _)); computes_to_inv; subst; *)
 (*     eexists; split; simpl; try destruct v; simpl; eauto. *)
 (*     simpl; eauto. *)
 (* Qed. *)
-Admitted.
+Abort.
 
 (*Definition SharpenFully {Sig}
     (spec : ADT Sig)

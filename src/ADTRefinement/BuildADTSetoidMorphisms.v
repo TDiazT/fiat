@@ -7,6 +7,7 @@ Require Import Fiat.Common
 
 Theorem refineADT_BuildADT_Rep n n' consSigs methSigs oldRep newRep
       (AbsR : oldRep -> newRep -> Prop)
+      (AbsR_Anti : oldRep -> newRep -> Prop)
       RCods
 : @respectful_heteroT _ _ _ _
       (fun oldCons newCons =>
@@ -18,7 +19,7 @@ Theorem refineADT_BuildADT_Rep n n' consSigs methSigs oldRep newRep
       (fun x y => @respectful_heteroT _ _ _ _
                     (fun oldMeth newMeth =>
                        forall methIdx R,
-                         @refineMethod oldRep newRep AbsR _ _ R
+                         @refineMethod oldRep newRep AbsR AbsR_Anti _ _ R
                                          (getMethDef oldMeth methIdx)
                                          (getMethDef newMeth methIdx))
                     (fun m m' => refineADT RCods))
@@ -28,7 +29,7 @@ Theorem refineADT_BuildADT_Rep n n' consSigs methSigs oldRep newRep
    unfold Proper, respectful_heteroT; intros.
    let A := match goal with |- refineADT ?RCods ?A ?B => constr:(A) end in
    let B := match goal with |- refineADT ?RCods ?A ?B => constr:(B) end in
-   eapply (@refinesADT _ RCods A B AbsR );
+   eapply (@refinesADT _ RCods A B AbsR AbsR_Anti);
      unfold id, pointwise_relation in *; simpl in *; intros; eauto.
  Qed.
 
@@ -39,7 +40,7 @@ Lemma refineADT_BuildADT_Both
                                    (getConsDef oldCons consIdx)
                                    (getConsDef newCons consIdx))
     -> forall oldMeth newMeth,
-         (forall methIdx R, @refineMethod _ _ eq _ _ R
+         (forall methIdx R, @refineMethod _ _ eq eq _ _ R
                                          (getMethDef oldMeth methIdx)
                                          (getMethDef newMeth methIdx))
          -> refineADT RCods (@BuildADT n n' rep consigs methSigs oldCons oldMeth)

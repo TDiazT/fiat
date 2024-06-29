@@ -21,7 +21,11 @@ Section HoneRepresentation.
   Variable newRep : Type. (* The new representation type. *)
 
   (* The abstraction relation between old and new representations. *)
-  Variable AbsR : oldRep -> newRep -> Prop.
+  Variable AbsR_mono : oldRep -> newRep -> Prop.
+  Variable AbsR_anti : oldRep -> newRep -> Prop.
+
+  Notation "ro ⪯ rn" := (AbsR_mono ro rn) (at level 70).
+  Notation "ro ⪰ rn" := (AbsR_anti ro rn) (at level 70).
 
   (* When switching representations, we can always build a default
      implementation (computation?) for the methods of an ADT with
@@ -31,13 +35,13 @@ Section HoneRepresentation.
              (Sig : consSig)
              (oldCons : @consDef oldRep Sig)
   : @consDef newRep Sig :=
-    {| consBody := absConstructor AbsR (consBody oldCons) |}.
+    {| consBody := absConstructor AbsR_mono (consBody oldCons) |}.
 
   Definition absMethDef
              (Sig : methSig)
              (oldCons : @methDef oldRep Sig)
   : @methDef newRep Sig :=
-    {| methBody := absMethod AbsR (methBody oldCons) |}.
+    {| methBody := absMethod AbsR_mono AbsR_anti (methBody oldCons) |}.
 
   Lemma refineADT_BuildADT_Rep_default
         {n n'}
@@ -52,7 +56,7 @@ Section HoneRepresentation.
       (BuildADT (imap absConsDef consDefs)
                 (imap absMethDef methDefs)).
   Proof.
-    eapply refineADT_Build_ADT_Rep with (AbsR := AbsR); eauto; intros.
+    eapply refineADT_Build_ADT_Rep with (AbsR := AbsR_mono) (AbsR_Anti := AbsR_anti); eauto; intros.
     - unfold getConsDef.
       rewrite <- ith_imap.
       apply refine_absConstructor.
@@ -71,10 +75,10 @@ Section HoneRepresentation.
            (oldMethod : methodType _ Dom Cod)
            refinedMeth,
       (forall nr or,
-         AbsR or nr ->
-         refineMethod' AbsR R (oldMethod or)
+         AbsR_anti or nr ->
+         refineMethod' AbsR_mono R (oldMethod or)
                        (refinedMeth nr))
-      -> refineMethod eq R (absMethod (cod := Cod) AbsR oldMethod)
+      -> refineMethod eq eq R (absMethod (cod := Cod) AbsR_mono AbsR_anti oldMethod)
                       refinedMeth.
   (* Proof. *)
   (*   unfold refineMethod; intros; subst. *)
@@ -109,10 +113,10 @@ Section HoneRepresentation.
            (R : RCod Cod)
            (oldMethod : methodType _ Dom Cod)
            refinedMeth,
-      refineMethod eq R (absMethod (cod := Cod) AbsR oldMethod) refinedMeth
+      refineMethod eq eq R (absMethod (cod := Cod) AbsR_mono AbsR_anti oldMethod) refinedMeth
       -> (forall nr or,
-             AbsR or nr ->
-             refineMethod' AbsR R (oldMethod or)
+             AbsR_anti or nr ->
+             refineMethod' AbsR_mono R (oldMethod or)
                            (refinedMeth nr)).
   Proof.
   (*   unfold refineMethod; intros; subst. *)
@@ -145,9 +149,9 @@ Section HoneRepresentation.
   Lemma refine_AbsConstructor :
     forall Dom (oldConstructor : constructorType _ Dom)
            refinedConstructor,
-      (refineConstructor AbsR oldConstructor
+      (refineConstructor AbsR_mono oldConstructor
                          refinedConstructor)
-      -> refineConstructor eq (absConstructor AbsR oldConstructor)
+      -> refineConstructor eq (absConstructor AbsR_mono oldConstructor)
                            refinedConstructor.
   Proof.
   (*   unfold refineMethod; intros; subst. *)
@@ -163,9 +167,9 @@ Section HoneRepresentation.
   Lemma refine_AbsConstructor' :
     forall Dom (oldConstructor : constructorType _ Dom)
            refinedConstructor,
-      refineConstructor eq (absConstructor AbsR oldConstructor)
+      refineConstructor eq (absConstructor AbsR_mono oldConstructor)
                         refinedConstructor
-      -> refineConstructor AbsR oldConstructor
+      -> refineConstructor AbsR_mono oldConstructor
                             refinedConstructor.
   Proof.
   (*   unfold refineConstructor; intros; subst. *)
@@ -191,7 +195,7 @@ Abort.
              (refined_constr_body : @constructorType newRep (consDom consSig))
              (consDefs : ilist (B := @consDef oldRep) consSigs)
              (refined_consDefs : ilist (B := @consDef newRep) consSigs),
-        (let H := refined_constr_body in refineConstructor AbsR constr_body H)
+        (let H := refined_constr_body in refineConstructor AbsR_mono constr_body H)
         -> refine_Constructors consDefs refined_consDefs
         -> @refine_Constructors
              _
@@ -211,7 +215,7 @@ Abort.
       | Vector.nil => fun _ _ _ => True
       | Vector.cons consig _ consigs' =>
         fun consDefs refined_consDefs refine_cons =>
-          refineConstructor AbsR (ilist_hd consDefs) (ilist_hd refined_consDefs) /\
+          refineConstructor AbsR_mono (ilist_hd consDefs) (ilist_hd refined_consDefs) /\
           refine_Constructors (ilist_tl consDefs) (ilist_tl refined_consDefs)
     end consDefs refined_consDefs refine_cons.
   Proof.
@@ -263,7 +267,7 @@ Axiom eq_rect_eq :
              (refined_meth_body : @methodType newRep (methDom methSig) (methCod methSig))
              (methDefs : ilist (B := @methDef oldRep) methSigs)
              (refined_methDefs : ilist (B := @methDef newRep) methSigs),
-        (let H := refined_meth_body in refineMethod AbsR R meth_body H)
+        (let H := refined_meth_body in refineMethod AbsR_mono AbsR_anti R meth_body H)
         -> refine_Methods RCods methDefs refined_methDefs
         -> @refine_Methods
             _
@@ -294,7 +298,7 @@ Axiom eq_rect_eq :
         (BuildADT consDefs methDefs)
         (BuildADT refined_consDefs refined_methDefs).
   Proof.
-    intros; eapply refineADT_Build_ADT_Rep with (AbsR := AbsR).
+    intros; eapply refineADT_Build_ADT_Rep with (AbsR := AbsR_mono) (AbsR_Anti := AbsR_anti).
     - clear -H. induction H; simpl.
       + intro; inversion mutIdx.
       + intro; revert IHrefine_Constructors H.
@@ -459,9 +463,10 @@ Arguments DecADTSig : simpl never.
 
 (* Honing tactic for refining the representation type and spawning new subgoals for
  each of the operations. *)
-Tactic Notation "hone" "representation" "using" open_constr(AbsR') :=
+
+Tactic Notation "hone" "representation" "using" open_constr(AbsR') "and" open_constr(AbsR_Anti') :=
   eapply SharpenStep;
-  [idtac|eapply refineADT_BuildADT_Rep_refine_All with (AbsR := AbsR');
+  [idtac|eapply refineADT_BuildADT_Rep_refine_All with (AbsR_mono := AbsR') (AbsR_anti := AbsR_Anti');
     [ repeat (first [eapply refine_Constructors_nil
                     | eapply refine_Constructors_cons;
                       [ intros; simpl; intros;
@@ -479,16 +484,16 @@ Tactic Notation "hone" "representation" "using" open_constr(AbsR') :=
                         end | ] ])
     | repeat (first [eapply refine_Methods_nil
                     | eapply refine_Methods_cons;
-                      [ intros; simpl; intros;
+                      [ intros; simpl; unfold refineMethod, refineMethod'; intros;
                         match goal with
-                        |  |- refine _ (?E _ _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
-                        |  |- refine _ (?E _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
-                        |  |- refine _ (?E _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
-                        |  |- refine _ (?E _ _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
-                        |  |- refine _ (?E _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
-                        |  |- refine _ (?E _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
-                        |  |- refine _ (?E _ _) => is_evar E; let H := fresh in fast_set (H := E)
-                        |  |- refine _ (?E _) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refine _ _ (?E _ _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refine _ _ (?E _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refine _ _ (?E _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refine _ _ (?E _ _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refine _ _ (?E _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refine _ _ (?E _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refine _ _ (?E _ _) => is_evar E; let H := fresh in fast_set (H := E)
+                        |  |- refine _ _ (?E _) => is_evar E; let H := fresh in fast_set (H := E)
                           | _ => idtac
                         end | ]
                     ])]
