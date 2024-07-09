@@ -4,48 +4,71 @@ Import ListNotations.
 
 #[unfold_fix]
 Symbol not_implemented : forall {A}, A.
-(* Symbol not_implemented : forall {A}, list A. *)
 Notation "?" := not_implemented.
 
-Symbol list_catch :
-  forall {A} (P : list A -> Prop)
-              (Pnil : P nil)
-              (Pcons : forall (a : A) (l : list A), P l -> P (cons a l))
-              (Pnot_impl : P not_implemented),
-    forall l, P l.
+Create HintDb icp.
 
-Symbol list_catch_ty :
-  forall {A} (P : list A -> Type)
-              (Pnil : P nil)
-              (Pcons : forall (a : A) (l : list A), P l -> P (cons a l))
-              (Pnot_impl : P not_implemented),
-    forall l, P l.
+Ltac exc_eauto := eauto with icp.
 
-(* Notation clash with imports *)
-Rewrite Rules list_catch_red :=
-  | list_catch _ ?Pnil _ _ nil ==> ?Pnil.
+Symbol exc_list_ind : forall (A : Type) (P : list A -> Type) (Hnil : P nil)
+  (Hcons : forall (a : A) (l : list A), P l -> P (cons a l))
+  (Hnot_impl : P (? (list A)))
+    (l : list A), P l.
+
+Rewrite Rules exc_list_indRed :=
+  | exc_list_ind ?A ?P ?Hnil ?Hcons ?Hnot_impl nil ==> ?Hnil
+  | exc_list_ind ?A ?P ?Hnil ?Hcons ?Hnot_impl (cons ?a ?l) ==> ?Hcons ?a ?l (exc_list_ind ?A ?P ?Hnil ?Hcons ?Hnot_impl ?l)
+  | exc_list_ind ?A ?P ?Hnil ?Hcons ?Hnot_impl (? _) ==> ?Hnot_impl.
 
 Rewrite Rules list_red_rew :=
-|  match @not_implemented (list ?A) as t0  return ?P with
-  | nil => _
-  | _ => _
-  end ==> @not_implemented (?P@{t0 := (@not_implemented (list ?A))}).
+  |  match @not_implemented (list ?A) as t0  return ?P with
+     | nil => _
+     | _ => _
+     end ==> @not_implemented (?P@{t0 := (@not_implemented (list ?A))}).
+  (* |  match ? in list ?A  as t0  return ?P with *)
+  (*    | nil => _ *)
+  (*    | _ => _ *)
+  (*    end ==> @not_implemented (?P@{t0 := (@not_implemented (list ?A))}) *)
+
+Axioms
+    (noconf_unk_nil : forall {A}, ? (list A) = @nil A -> False)
+    (noconf_unk_cons : forall {A} (a : A) l, ? (list A) = cons a l -> False).
+
+Hint Extern 0 => match goal with
+  | [ H : ? (list ?A) = @nil _ |- _ ] => apply noconf_unk_nil in H; contradiction
+    | [ H : ? (list ?A)  = cons _ _ |- _ ] => apply noconf_unk_cons in H; contradiction
+    | [ H : @nil _ = ? (list ?A) |- _ ] => symmetry in H
+    | [ H : cons _ _ = ? (list ?A) |- _ ] => symmetry in H
+    | [|- context[? (list ?A) = @nil _]] => progress intros
+    | [|- context[? (list ?A) = cons _ _]] => progress intros
+    end : icp.
 
 Section ListICP.
-  Context {A} `{Refinable A}.
+  Context {A : Type} .
 
-  Reserved Infix "⊑l" (at level 10).
+  Reserved Infix "⊑l" (at level 70).
   Inductive refinement_list : list A -> list A -> Prop :=
-  | ref_nil_nil : nil ⊑l nil
-  | ref_cons_cons : forall a1 a2, a1 ⊑ a2 -> forall l1 l2,  l1  ⊑l l2 ->  (cons a1 l1) ⊑l (cons a2 l2)
-  | ref_list_not_impl : forall l, l ⊑l not_implemented
+  | is_refinement_nil : nil ⊑l nil
+  | is_refinement_cons : forall (a a' : A) (l1 l2 : list A),
+      a ⊑ a' -> l1 ⊑l l2 -> (cons a l1) ⊑l (cons a' l2)
+  | is_refinement_unk : forall l, l ⊑l ? (list A)
   where "l1 ⊑l l2" := (refinement_list l1 l2).
 
+  Hint Constructors refinement_list : icp.
+  Hint Constructors refinement_list : typeclass_instances.
+
   #[export]
-  Program Instance refinable_list : Refinable (list A) := {
-      refinement := refinement_list
-    }.
-  Admit Obligations.
+    Program Instance refinableList : Refinable (list A) :=
+    { refinement := refinement_list }.
+  Next Obligation.
+    unfold Relation_Definitions.transitive; intros x; induction x as [| hd tl IH |] using exc_list_ind; intros ? ?; inversion 1; subst; inversion 1; subst; exc_eauto.
+    constructor; eauto.
+    etransitivity; eauto.
+  Qed.
+  Next Obligation.
+    intros l; induction l as [| hd tl IH |] using exc_list_ind; constructor; eauto.
+    reflexivity.
+  Qed.
 
   Lemma app_ref : forall (l l' k k' : list A),
       l ⊑ l' ->
@@ -57,43 +80,41 @@ Section ListICP.
     - simpl. auto.
     - simpl. intros Hprec'. constructor; auto.
       apply IHHprec; auto.
-    -  cbn. constructor.
+    - intros. cbn. constructor.
   Qed.
 
   Lemma app_ref_refl_inv_l : forall (l l' : list A),
       l ++ l' ⊑ l ++ l' ->
       l ⊑ l.
-  Proof.
-    intros l; induction l as [| hd tl IH|] using list_catch; intros l'.
+  Proof with eauto with icp.
+    intros l; induction l as [| hd tl IH|] using exc_list_ind; intros l'...
     - constructor.
-    - simpl. inversion 1; subst.
-      * constructor; auto. eapply IH; eauto.
-      * admit. (* false premise *)
-    - constructor.
-  Admitted.
+    - simpl. inversion 1; subst...
+      constructor; auto. eapply IH; eauto.
+  Qed.
 
   Lemma rev_ref : forall l l' : list A,
       l ⊑ l' ->
       rev l ⊑ rev l'.
   Admitted.
 
-  Context `{Complete A}.
-
   Inductive is_complete_list : list A -> Prop :=
   | is_complete_nil : is_complete_list nil
-  | is_complete_cons : forall a, is_complete a -> forall l, is_complete_list l -> is_complete_list (cons a l).
+  | is_complete_cons : forall (a : A) (l : list A), is_complete a -> is_complete_list l -> is_complete_list (cons a l).
+
+  Hint Constructors is_complete_list : icp.
+  Hint Constructors is_complete_list : typeclass_instances.
 
   #[export]
-    Instance complete_list : Complete (list A) := {
-      is_complete := is_complete_list
-    }.
+    Instance completeList : Complete (list A) :=
+    { is_complete := is_complete_list }.
 
   Lemma is_complete_app : forall l l' : list A,
       is_complete l ->
       is_complete l' ->
       is_complete (l ++ l').
   Proof.
-    induction l using list_catch; eauto; intros l'.
+    induction l using exc_list_ind; eauto; intros l'.
     inversion 1; subst; eauto. intros ?.
     simpl; constructor; eauto. apply IHl; eauto.
   Qed.
@@ -101,13 +122,28 @@ Section ListICP.
   Lemma is_complete_rev : forall l : list A,
       is_complete l ->
       is_complete (rev l).
-  Admitted.
+  Proof.
+    induction l using exc_list_ind; eauto.
+    inversion 1; subst. simpl.
+    apply is_complete_app; eauto.
+    repeat constructor; eauto.
+  Qed.
 
   #[export]
-    Program Instance : Ground (list A).
-  Admit Obligations.
+    Instance groundList : Ground (list A).
+  Proof with eauto with icp.
+    constructor; intros l; induction l as [|? ? IH |] using exc_list_ind; inversion 1; intros l'; inversion 1; subst...
+    f_equal...
+  Qed.
 
 End ListICP.
+
+#[export] Hint Constructors refinement_list : icp.
+#[export] Hint Constructors refinement_list : typeclass_instances.
+#[export] Hint Constructors is_complete_list : icp.
+#[export] Hint Constructors is_complete_list : typeclass_instances.
+
+
 
 Section ProdICP.
   Context {A B} `{Refinable A} `{Refinable B}.

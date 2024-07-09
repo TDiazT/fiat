@@ -67,7 +67,8 @@ Tactic Notation "unfold_complete" "in" hyp(H) := unfold is_complete in H; cbn in
 Tactic Notation "unfold_complete" := unfold is_complete; cbn.
 
 #[export] Hint Extern 0 (Complete _) => eassumption : typeclass_instances.
-#[export] Hint Extern 0 (@is_complete ?A ?B _) => unfold B :  typeclass_instances.
+#[export] Hint Extern 0 (@is_complete ?B _) => unfold B :  typeclass_instances.
+#[export] Hint Extern 0 (is_complete _) => unfold_complete : typeclass_instances.
 
 #[export]
 Instance completeFun {A B} `{Complete A} `{Complete B} : Complete (A -> B) :=
@@ -130,7 +131,7 @@ exact I
 
 
 #[export]
-Instance eqGroundTrue (A : Type) (refEqA := eqRefinable A) (compA := eqCompleteTrue A) : Ground A.
+Instance eqGroundTrue (A : Type) (refEqA := eqRefinable A) (compA := eqCompleteTrue A) : Ground A | 100.
 Proof. econstructor. eauto. Qed.
 
 
@@ -166,7 +167,7 @@ Section IncReformulation.
   Obligation Tactic :=  try now eauto.
 
   #[export]
-  Program Instance reformulateConst (P : Prop) : IncRef (fun a => P) := {
+  Program Instance IncRefConst (P : Prop) : IncRef (fun a => P) := {
       ir_mono := fun _ => P ;
       ir_anti := fun _ => P ;
     }.
@@ -174,33 +175,32 @@ Section IncReformulation.
   Obligation Tactic :=  try now intuition.
 
   #[export]
-  Program Instance reformulateEq {B} `{HB : Ground B}
-    (g h : A -> B) (Hcg : is_monotone g) (Hch : is_monotone h)
-    (Hcg' : is_complete g) (Hch' : is_complete h)
-    : IncRef (fun a => g a = h a) | 2
+  Program Instance IncRefEq {B} `{HB : Ground B}
+    (f g : A -> B) (Hcf : is_monotone f) (Hcg : is_monotone g)
+    (Hcf' : is_complete f) (Hcg' : is_complete g)
+    : IncRef (fun a => f a = g a) | 2
     := {
-      ir_mono := fun a => exists b, b ⊑ g a /\ b ⊑ h a ;
-      ir_anti := fun a => is_complete (g a) /\ g a = h a ;
+      ir_mono := fun a => exists b, b ⊑ f a /\ b ⊑ g a ;
+      ir_anti := fun a => is_complete (f a) /\ f a = g a ;
     }.
   Next Obligation.
-    intros ? ? ? ? g h ? ? ? ? a1 a2 Hprec [b [? ?]].
+    intros ? ? ? ? f g ? ? ? ? a1 a2 Hprec [b [? ?]].
     exists b. split.
+    - transitivity (f a1) ; auto.
     - transitivity (g a1) ; auto.
-    - transitivity (h a1) ; auto.
   Qed.
   Next Obligation.
-    intros ? ? ? ? g h ? ? ? ? a1 a2 Hprec [Hgc Heq].
-    erewrite (is_complete_minimal _ Hgc (g a1)).
-    - split; eauto. rewrite Heq in Hgc.
-      erewrite (is_complete_minimal _ Hgc (h a1)); eauto.
-    - eauto.
+    intros ? ? ? ? f g ? ? ? ? a1 a2 Hprec [Hfc Heq].
+    erewrite (is_complete_minimal _ Hfc (f a1)); eauto.
+    split; eauto. rewrite Heq in Hfc.
+    erewrite (is_complete_minimal _ Hfc (g a1)); eauto.
   Qed.
   Next Obligation.
-  intros B ? ? ? g h ? ? Hcg Hch a Hca.
+  intros ? ? ? ? ? ? ? ? ? ? ? Hca.
   cbn in *. eexists. split; try reflexivity. rewrite Hca; reflexivity.
   Qed.
   Next Obligation.
-    intros B ? ? ? g h ? ? Hcg Hch a Hca.
+    intros ? ? ? ? ? ? ? ? ? ? ? ?.
     intros [b [Hb1 Hb2]].
     eapply is_complete_minimal in Hb1; eauto.
     eapply is_complete_minimal in Hb2; eauto; subst.
@@ -209,56 +209,27 @@ Section IncReformulation.
 
   #[export]
   Program Instance IncRefEqL {B} `{HB : Ground B}
-    (g : A -> B) (Hcg : is_complete g) (Hmonog : is_monotone g)
-    (b : B) : IncRef (fun a => g a = b) | 1 := {
-      ir_mono := fun a => b ⊑ g a ;
-      ir_anti := fun a => is_complete (g a) /\ g a = b ;
+    (f : A -> B) (Hcf : is_complete f) (Hmonof : is_monotone f)
+    (b : B) : IncRef (fun a => f a = b) | 1 := {
+      ir_mono := fun a => b ⊑ f a ;
+      ir_anti := fun a => is_complete (f a) /\ f a = b ;
     }.
   Next Obligation.
-    cbn; intros ? ? ? ? g Hcg ? b a1 a2 Hprec ?.
-    transitivity (g a1); try apply Hcg; eauto.
+    cbn; intros ? ? ? ? f Hcf ? ? ? ? ? ?.
+    transitivity (f a1); try apply Hcf; eauto.
   Qed.
   Next Obligation.
-    intros ? ? ? ? g ? Hmono b a1 a2 Hprec [? ?].
+    intros ? ? ? ? ? ? Hmono b a1 a2 Hprec [? ?].
     eapply is_complete_minimal in Hmono; eauto.
     rewrite Hmono; eauto.
   Qed.
   Next Obligation.
-    intros B ? ? ? g ? ? ? a <-. reflexivity.
+    intros B ? ? ? ? ? ? ? a <-. reflexivity.
   Qed.
   Next Obligation.
-    intros B ? ? ? g ? ? ? a Hca. intros Hbg.
-    cbn; eapply is_complete_minimal in Hbg; eauto.
+    intros B ? ? ? ? ? ? ? ? ? ?.
+    cbn. symmetry. eapply is_complete_minimal; eauto.
   Qed.
-
-  Program Instance IncRefEqR {B} `{HB : Ground B}
-    (g : A -> B) (Hcg : is_complete g) (Hmonog : is_monotone g)
-    (b : B) : IncRef (fun a => b = g a) | 1 := {
-      ir_mono := fun a => b ⊑ g a ;
-      ir_anti := fun a => is_complete b /\ b = g a ;
-    }.
-  Next Obligation.
-    cbn; intros ? ? ? ? g Hcg ? b a1 a2 Hprec ?.
-    transitivity (g a1); try apply Hcg; eauto.
-  Qed.
-  Next Obligation.
-    intros ? ? ? ? g ? Hmono b a1 a2 Hprec [? Heq]. split; eauto.
-    eapply is_complete_minimal in Hmono; eauto.
-    rewrite Hmono; eauto.
-    rewrite <- Heq; eauto.
-  Qed.
-  Next Obligation.
-    intros B ? ? ? g ? ? ? a ->. reflexivity.
-  Qed.
-  Next Obligation.
-    intros B ? ? ? g ? ? ? a Hca. intros Hbg.
-    cbn; eapply is_complete_minimal in Hbg; eauto.
-  Qed.
-  Next Obligation.
-    simpl; intros; split; eauto.
-    subst. apply Hcg; eauto.
-  Qed.
-
 
   #[export]
   Program Instance IncRefForall {B} {P : B -> A -> Prop} `{HPB : forall b, IncRef (P b)} :
@@ -459,12 +430,12 @@ Qed.
 Instance IncRefEq_fun {A} `{Refinable A} `{Complete A}
   {B} `{Refinable B}
   {C} `{Refinable C}
-  (g h : A -> B -> C) {Hmono : IncRef (fun a => forall b, g a b = h a b)}
-  : IncRef (fun a => g a = h a).
+  (f g : A -> B -> C) {Hmono : IncRef (fun a => forall b, f a b = g a b)}
+  : IncRef (fun a => f a = g a).
 Proof.
   eapply IncRefEquiv.
   - apply Hmono.
-  - intros a; split.
-    * intros Heq. apply functional_extensionality; eauto.
+  - intros; split.
+    * intros. apply functional_extensionality; eauto.
     * intros ->; eauto.
 Defined.
