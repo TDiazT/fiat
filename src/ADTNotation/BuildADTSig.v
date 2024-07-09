@@ -14,7 +14,7 @@ Delimit Scope consSig_scope with consSig.
 Record methSig :=
   { methID : string ;
     methDom : list Type ;
-    methCod : option Type
+    methCod : option refinableType
   }.
 
 Arguments Build_methSig methID%string methDom%type_scope methCod%type_scope.
@@ -35,7 +35,7 @@ Notation "'Method' id : 'rep' '*' dom1 '*' .. '*' domn '->' 'rep' " :=
 Notation "'Method' id : 'rep' '*' dom1 '*' .. '*' domn '->' 'rep' '*' cod " :=
   {| methID := id;
      methDom := @cons Type dom1%type .. (@cons Type domn%type (@nil Type)) ..;
-     methCod := Some (cod%type : Type) |}
+     methCod := Some (cod%type : refinableType) |}
     (id at level 0, cod at level 0, dom1 at level 0,
      domn at level 0,  at level 93)
   : methSig_scope.
@@ -50,7 +50,7 @@ Notation "'Method' id : 'rep' '*' 'rep' " :=
 Notation "'Method' id : 'rep' '->' 'rep' '*' cod " :=
   {| methID := id;
      methDom := @nil Type ;
-     methCod := Some (cod%type : Type) |}
+     methCod := Some (cod%type : refinableType) |}
     (id at level 0, cod at level 0, at level 93)
   : methSig_scope.
 

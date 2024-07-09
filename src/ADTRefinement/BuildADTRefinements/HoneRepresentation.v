@@ -44,10 +44,10 @@ Section HoneRepresentation.
     {| methBody := absMethod AbsR_mono AbsR_anti (methBody oldCons) |}.
 
   Lemma refineADT_BuildADT_Rep_default
+        RCods {RCodsRefl : forall A, Reflexive (RCods A)}
         {n n'}
         {consSigs : Vector.t consSig n}
         {methSigs : Vector.t methSig n'}
-        RCods {HR : forall idx, RCodReflexive (snd (MethodDomCod (BuildADTSig consSigs methSigs) idx)) (RCods idx) }
         (consDefs : ilist (B := @consDef oldRep) consSigs)
         (methDefs : ilist (B := @methDef oldRep) methSigs) :
     refineADT
@@ -56,7 +56,7 @@ Section HoneRepresentation.
       (BuildADT (imap absConsDef consDefs)
                 (imap absMethDef methDefs)).
   Proof.
-    eapply refineADT_Build_ADT_Rep with (AbsR := AbsR_mono) (AbsR_Anti := AbsR_anti); eauto; intros.
+    eapply refineADT_Build_ADT_Rep with (AbsR_mono := AbsR_mono) (AbsR_anti := AbsR_anti); eauto; intros.
     - unfold getConsDef.
       rewrite <- ith_imap.
       apply refine_absConstructor.
@@ -70,17 +70,17 @@ Section HoneRepresentation.
 
   Lemma refine_AbsMethod :
     forall (Dom : list Type)
-           (Cod : option Type)
-           (R : RCod Cod)
-           (oldMethod : methodType _ Dom Cod)
+      (Cod : option refinableType)
+      RCods
+      (oldMethod : methodType _ Dom Cod)
            refinedMeth,
       (forall nr or,
          AbsR_anti or nr ->
-         refineMethod' AbsR_mono R (oldMethod or)
+         refineMethod' AbsR_mono RCods (oldMethod or)
                        (refinedMeth nr))
-      -> refineMethod eq eq R (absMethod (cod := Cod) AbsR_mono AbsR_anti oldMethod)
+      -> refineMethod eq eq RCods (absMethod (cod := Cod) AbsR_mono AbsR_anti oldMethod)
                       refinedMeth.
-  (* Proof. *)
+  Proof.
   (*   unfold refineMethod; intros; subst. *)
   (*   induction Dom; destruct Cod; simpl; intros. *)
   (*   - intros v ComputesTo_v; subst. *)
@@ -109,14 +109,14 @@ Section HoneRepresentation.
 
   Lemma refine_AbsMethod' :
     forall (Dom : list Type)
-           (Cod : option Type)
-           (R : RCod Cod)
+           (Cod : option refinableType)
+           RCods
            (oldMethod : methodType _ Dom Cod)
            refinedMeth,
-      refineMethod eq eq R (absMethod (cod := Cod) AbsR_mono AbsR_anti oldMethod) refinedMeth
+      refineMethod eq eq RCods (absMethod (cod := Cod) AbsR_mono AbsR_anti oldMethod) refinedMeth
       -> (forall nr or,
              AbsR_anti or nr ->
-             refineMethod' AbsR_mono R (oldMethod or)
+             refineMethod' AbsR_mono RCods (oldMethod or)
                            (refinedMeth nr)).
   Proof.
   (*   unfold refineMethod; intros; subst. *)
@@ -222,59 +222,25 @@ Abort.
     destruct refine_cons; eauto.
   Defined.
 
-  Definition empty_RCods {n} {consSigs : Vector.t consSig n}
-    {methSigs : Vector.t methSig 0} :
-    forall idx, RCod (snd (MethodDomCod (BuildADTSig consSigs methSigs) idx)).
-    inversion idx.
-  Qed.
 
-
-Axiom eq_rect_eq :
-  forall (U:Type) (p:U) (Q:U -> Type) (x:Q p) (h:p = p), x = eq_rect p Q x p h.
-
-  Definition cons_RCods {n} {consSigs : Vector.t consSig n}
-    {n'} {methSigs : Vector.t methSig n'} {methSig : methSig}
-    (R : RCod (methCod methSig))
-    (RCods : forall idx, RCod (snd (MethodDomCod (BuildADTSig consSigs methSigs) idx))) :
-    forall idx,
-      { RCods' : RCod (snd (MethodDomCod (BuildADTSig consSigs (Vector.cons _ methSig n' methSigs)) idx)) | (forall (e : Fin.F1 = idx), RCods' =  eq_rect Fin.F1 (fun idx => RCod (snd (MethodDomCod (BuildADTSig consSigs (Vector.cons _ methSig n' methSigs)) idx))) R _ e) /\ forall idx' (e : Fin.FS idx' = idx), RCods' = eq_rect (Fin.FS idx') (fun idx => RCod (snd (MethodDomCod (BuildADTSig consSigs (Vector.cons _ methSig n' methSigs)) idx))) (RCods idx') _ e}.
-    intro idx.
-    cbn in *.
-    (* inversion idx; subst. *)
-    depelim idx.
-    - exists R. split.
-      * intros. rewrite <- eq_rect_eq . reflexivity.
-      * intros ? e0. inversion e0.
-    - exists (RCods idx). split.
-      * inversion e.
-      * intros.
-        assert (idx' = idx). admit.
-        destruct H.
-
-        rewrite <- eq_rect_eq. reflexivity.
-  Defined.
-
-  Inductive refine_Methods {n} {consSigs : Vector.t consSig n} :
-    forall {n'}  {methSigs : Vector.t methSig n'}
-      (RCods : forall idx, RCod (snd (MethodDomCod (BuildADTSig consSigs methSigs) idx))),
+  Inductive refine_Methods RCods :
+    forall {n'} {methSigs : Vector.t methSig n'},
       ilist (B := @methDef oldRep) methSigs
       -> ilist (B := @methDef newRep) methSigs ->
-           Type :=
-  | refine_Methods_nil : @refine_Methods _ _ _ (Vector.nil _) empty_RCods inil inil
+           Prop :=
+  | refine_Methods_nil : @refine_Methods RCods _ (Vector.nil _) inil inil
   | refine_Methods_cons :
-      forall n' methSig methSigs R RCods
+      forall n' methSig methSigs
              (meth_body : @methodType oldRep (methDom methSig) (methCod methSig))
              (refined_meth_body : @methodType newRep (methDom methSig) (methCod methSig))
              (methDefs : ilist (B := @methDef oldRep) methSigs)
              (refined_methDefs : ilist (B := @methDef newRep) methSigs),
-        (let H := refined_meth_body in refineMethod AbsR_mono AbsR_anti R meth_body H)
+        (let H := refined_meth_body in refineMethod AbsR_mono AbsR_anti RCods meth_body H)
         -> refine_Methods RCods methDefs refined_methDefs
         -> @refine_Methods
+           RCods
             _
-            _
-            _
-            (Vector.cons _ methSig n' methSigs)
-            (fun idx => proj1_sig (cons_RCods R RCods idx))
+             (Vector.cons _ methSig n' methSigs)
              (icons {| methBody := meth_body |} methDefs)
                           (icons {| methBody := refined_meth_body |} refined_methDefs).
 
@@ -282,10 +248,10 @@ Axiom eq_rect_eq :
   (* This method is used to hone an ADT's representation and
      spawn off subgoals for each operation in one fell-swoop. *)
   Lemma refineADT_BuildADT_Rep_refine_All
+        RCods
         {n n'}
         (consSigs : Vector.t consSig n)
         (methSigs : Vector.t methSig n')
-        RCods
         (consDefs : ilist (B := @consDef oldRep) consSigs)
         (methDefs : ilist (B := @methDef oldRep) methSigs)
         (refined_consDefs : ilist (B := @consDef newRep) consSigs)
@@ -298,29 +264,23 @@ Axiom eq_rect_eq :
         (BuildADT consDefs methDefs)
         (BuildADT refined_consDefs refined_methDefs).
   Proof.
-    intros; eapply refineADT_Build_ADT_Rep with (AbsR := AbsR_mono) (AbsR_Anti := AbsR_anti).
-    - clear -H. induction H; simpl.
+    intros; eapply refineADT_Build_ADT_Rep with (AbsR_mono := AbsR_mono) (AbsR_anti := AbsR_anti).
+    - induction H; simpl.
       + intro; inversion mutIdx.
-      + intro; revert IHrefine_Constructors H.
-        generalize dependent consSig.
-        generalize dependent consSigs.
-        pattern n, mutIdx.
+      + intro; revert IHrefine_Constructors H; clear.
+        revert consSig constr_body refined_constr_body
+               consSigs consDefs refined_consDefs; pattern n, mutIdx.
         match goal with
           |- ?P n mutIdx => simpl; apply (Fin.caseS P); simpl; intros; eauto
         end.
-    - induction X; simpl.
+    - induction H0; simpl.
       + intro; inversion obsIdx.
-      + depelim obsIdx.
-        *
-          set (cons_RCods _ _ _).
-          destruct s as [? [Heq1 Heq2]].
-          cbn.
-          rewrite (Heq1 eq_refl). cbn. exact r.
-        *
-          set (cons_RCods _ _ _).
-          destruct s as [? [Heq1 Heq2]].
-          cbn.
-          rewrite (Heq2 _ eq_refl). cbn. apply IHX.
+      + intro; revert IHrefine_Methods H0; clear.
+        revert methSig meth_body refined_meth_body
+               methSigs methDefs refined_methDefs consSigs; pattern n', obsIdx.
+        match goal with
+          |- ?P n' obsIdx => simpl; apply (Fin.caseS P); simpl; intros; eauto
+        end.
   Qed.
 
 End HoneRepresentation.
@@ -330,7 +290,7 @@ End HoneRepresentation.
 
 Tactic Notation "hone" "representation" "using" open_constr(AbsR') "with" "defaults" :=
   eapply SharpenStep;
-  [eapply refineADT_BuildADT_Rep_default with (AbsR := AbsR') |
+  [eapply refineADT_BuildADT_Rep_default with (AbsR_mono := AbsR') |
    compute [imap absConsDef absMethDef]; simpl ].
 
 Ltac set_rhs_head_evar _ :=
@@ -464,9 +424,9 @@ Arguments DecADTSig : simpl never.
 (* Honing tactic for refining the representation type and spawning new subgoals for
  each of the operations. *)
 
-Tactic Notation "hone" "representation" "using" open_constr(AbsR') "and" open_constr(AbsR_Anti') :=
+Tactic Notation "hone" "representation" "using" open_constr(AbsR_mono') "and" open_constr(AbsR_anti') :=
   eapply SharpenStep;
-  [idtac|eapply refineADT_BuildADT_Rep_refine_All with (AbsR_mono := AbsR') (AbsR_anti := AbsR_Anti');
+  [idtac|eapply refineADT_BuildADT_Rep_refine_All with (AbsR_mono := AbsR_mono') (AbsR_anti := AbsR_anti');
     [ repeat (first [eapply refine_Constructors_nil
                     | eapply refine_Constructors_cons;
                       [ intros; simpl; intros;

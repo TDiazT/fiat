@@ -23,10 +23,10 @@ Section BuildADTRefinements.
         (Rep : Type)
         (AbsR_mono : Rep -> Rep -> Prop)
         (AbsR_anti : Rep -> Rep -> Prop)
+        RCods
         {n n'}
         (consSigs : Vector.t consSig n)
         (methSigs : Vector.t methSig n')
-        RCods
         (consDefs : ilist (B := @consDef Rep) consSigs)
         (methDefs : ilist (B := @methDef Rep) methSigs)
         (idx : @Fin.t n)
@@ -34,8 +34,8 @@ Section BuildADTRefinements.
   :
     (forall consIdx,
        refineConstructor AbsR_mono (getConsDef consDefs consIdx) (getConsDef consDefs consIdx))
-    -> (forall methIdx R,
-          refineMethod AbsR_mono AbsR_anti R (getMethDef methDefs methIdx) (getMethDef methDefs methIdx))
+    -> (forall methIdx,
+          refineMethod AbsR_mono AbsR_anti RCods (getMethDef methDefs methIdx) (getMethDef methDefs methIdx))
     -> refineConstructor AbsR_mono
                          (consBody (ith consDefs idx ))
                          (consBody newDef)
@@ -44,7 +44,7 @@ Section BuildADTRefinements.
          (BuildADT consDefs methDefs)
          (ADTReplaceConsDef consDefs methDefs idx newDef).
   Proof.
-    intros; eapply refineADT_BuildADT_Rep with (AbsR := AbsR_mono) (AbsR_Anti := AbsR_anti); eauto.
+    intros; eapply refineADT_BuildADT_Rep with (AbsR_mono := AbsR_mono) (AbsR_anti := AbsR_anti); eauto.
     intros; unfold getConsDef.
     unfold replaceConsDef.
     destruct (fin_eq_dec consIdx idx); subst.
@@ -54,10 +54,10 @@ Section BuildADTRefinements.
 
   Corollary SharpenStep_BuildADT_ReplaceConstructor_eq
             (Rep : Type)
+            RCods (RCodsPreOrder : forall A, PreOrder (RCods A))
             {n n'}
             (consSigs : Vector.t consSig n)
             (methSigs : Vector.t methSig n')
-            RCods {HR : forall idx, RCodPreOrderT (snd (MethodDomCod (BuildADTSig consSigs methSigs) idx)) (RCods idx)}
             (consDefs : ilist (B := @consDef Rep) consSigs)
             (methDefs : ilist (B := @methDef Rep) methSigs)
             (idx : @Fin.t n)
@@ -68,22 +68,19 @@ Section BuildADTRefinements.
     -> refineADT RCods (ADTReplaceConsDef consDefs methDefs idx newDef) adt''
     -> refineADT RCods (BuildADT consDefs methDefs) adt''.
   Proof.
-    intros; eapply SharpenStep; try exact X.
-    eapply HR.
+    intros; eapply SharpenStep; eauto; try exact X.
     eapply refineADT_BuildADT_ReplaceConstructor with (AbsR_mono := eq) (AbsR_anti := eq);
     simpl; unfold refine; intros; subst; eauto.
     - reflexivity.
-    - eapply refineMethod_refl.
-      admit. (* RCod is reflexive *)
-  (* Qed. *)
-  Admitted.
+    - eapply refineMethod_refl. apply RCodsPreOrder.
+  Qed.
 
   Corollary FullySharpenStep_BuildADT_ReplaceConstructor_eq
             (Rep : Type)
+            RCods (RCodsPreOrder : forall A, PreOrder (RCods A))
             {n n'}
             (consSigs : Vector.t consSig n)
             (methSigs : Vector.t methSig n')
-            RCods {HR : forall idx, RCodPreOrderT (snd (MethodDomCod (BuildADTSig consSigs methSigs) idx)) (RCods idx)}
             (consDefs : ilist (B := @consDef Rep) consSigs)
             (methDefs : ilist (B := @methDef Rep) methSigs)
             (idx : @Fin.t n)
@@ -94,15 +91,12 @@ Section BuildADTRefinements.
     -> FullySharpenedUnderDelegates RCods (ADTReplaceConsDef consDefs methDefs idx newDef) adt''
     -> FullySharpenedUnderDelegates RCods (BuildADT consDefs methDefs) adt''.
   Proof.
-    intros; eapply FullySharpenStep; try exact X.
-    eapply HR.
+    intros; eapply FullySharpenStep; eauto; try exact X.
     eapply refineADT_BuildADT_ReplaceConstructor with (AbsR_mono := eq) (AbsR_anti := eq);
     simpl; unfold refine; intros; subst; eauto.
     - reflexivity.
-    - eapply refineMethod_refl.
-      admit. (* RCod is reflexive *)
-  (* Qed. *)
-  Admitted.
+    - eapply refineMethod_refl. apply RCodsPreOrder.
+  Qed.
 
   (* Corollary SharpenStep_BuildADT_ReplaceConstructor_eq *)
   (*           (Rep : Type) *)
@@ -369,10 +363,10 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
 
   Definition Notation_Friendly_FullySharpened_BuildMostlySharpenedcADT
              (RepT : Type)
+             RCods
              {n n'}
              {consSigs : Vector.t consSig n}
              {methSigs : Vector.t methSig n'}
-             RCods
              (consDefs : ilist consSigs)
              (methDefs : ilist methSigs)
              (DelegateIDs : nat)
@@ -398,23 +392,23 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
                          (rep DelegateReps) (methDom Sig)
                          (methCod Sig)) methSigs)
              (DelegateSpecs : forall idx, ADT (DelegateSigs idx))
-             (cAbsR :
+             (cAbsR_mono :
                 forall
                   (DelegateReps : Fin.t DelegateIDs -> Type)
                   (DelegateImpls : forall idx,
                                      ComputationalADT.pcADT (DelegateSigs idx) (DelegateReps idx))
                   (ValidImpls
-                   : forall (idx : Fin.t DelegateIDs) RCods,
+                   : forall idx : Fin.t DelegateIDs,
                        refineADT RCods (DelegateSpecs idx)
                                  (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls idx)))),
                   RepT -> rep DelegateReps -> Prop)
-             (cAbsR_Anti :
+             (cAbsR_anti :
                 forall
                   (DelegateReps : Fin.t DelegateIDs -> Type)
                   (DelegateImpls : forall idx,
                                      ComputationalADT.pcADT (DelegateSigs idx) (DelegateReps idx))
                   (ValidImpls
-                   : forall (idx : Fin.t DelegateIDs) RCods,
+                   : forall idx : Fin.t DelegateIDs,
                        refineADT RCods (DelegateSpecs idx)
                                  (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls idx)))),
                   RepT -> rep DelegateReps -> Prop)
@@ -423,13 +417,13 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
                                            (DelegateImpls : forall idx,
                                                               ComputationalADT.pcADT (DelegateSigs idx) (DelegateReps idx))
                                            (ValidImpls
-                                            : forall (idx : Fin.t DelegateIDs) RCods,
+                                            : forall idx : Fin.t DelegateIDs,
                                                 refineADT RCods (DelegateSpecs idx)
                                                           (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls idx)))),
                  Iterate_Dep_Type_BoundedIndex
                    (fun idx  =>
                       @refineConstructor
-                        (RepT) (rep DelegateReps) (cAbsR _ _ ValidImpls)
+                        (RepT) (rep DelegateReps) (cAbsR_mono _ _ ValidImpls)
                         (consDom (Vector.nth consSigs idx))
                         (getConsDef consDefs idx)
                         (LiftcConstructor _ _ (ith (cConstructors DelegateReps DelegateImpls) idx))))
@@ -438,7 +432,7 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
                  (DelegateImpls : forall idx,
                      ComputationalADT.pcADT (DelegateSigs idx) (DelegateReps idx))
                  (ValidImpls
-                   : forall (idx : Fin.t DelegateIDs) RCods,
+                   : forall idx : Fin.t DelegateIDs,
                      refineADT RCods (DelegateSpecs idx)
                        (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls idx))))
                  RCods,
@@ -447,11 +441,11 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
                                         (fun idx =>
                                            @refineMethod
                                              RepT (rep DelegateReps)
-                                             (cAbsR _ _ ValidImpls)
-                                             (cAbsR_Anti _ _ ValidImpls)
+                                             (cAbsR_mono _ _ ValidImpls)
+                                             (cAbsR_anti _ _ ValidImpls)
+                                             RCods
                                              (methDom (Vector.nth methSigs idx))
                                              (methCod (Vector.nth methSigs idx))
-                                             (RCods idx)
                                              (getMethDef methDefs idx)
                                              (LiftcMethod (ith (cMethods DelegateReps DelegateImpls) idx))))
   : FullySharpenedUnderDelegates RCods (BuildADT consDefs methDefs)
@@ -462,11 +456,11 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
                                    Sharpened_DelegateSpecs := DelegateSpecs |}.
   Proof.
     intros * DelegateReps DelegateImpls DelegateImplRefinesSpec.
-    eapply (@refinesADT _ RCods (BuildADT consDefs methDefs)
+    eapply (@refinesADT RCods _ (BuildADT consDefs methDefs)
                         (LiftcADT (existT _ (rep DelegateReps)
                                           {| pcConstructors := _;
                                              pcMethods := _|}))
-                        (cAbsR DelegateReps DelegateImpls DelegateImplRefinesSpec)).
+                        (cAbsR_mono DelegateReps DelegateImpls DelegateImplRefinesSpec)).
     - simpl; unfold ComputationalADT.cConstructors; simpl; intros.
       rewrite <- ith_imap; eauto.
       apply (Lookup_Iterate_Dep_Type
@@ -597,9 +591,9 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
   Definition Notation_Friendly_SharpenFully
              (RepT : Type)
              {m n n'}
+             RCods
              (consSigs : Vector.t consSig n)
              (methSigs : Vector.t methSig n')
-             RCods
              (consDefs : ilist consSigs)
              (methDefs : ilist methSigs)
              (DelegateSigs' : Vector.t ADTSig m)
@@ -632,13 +626,13 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
                          (methCod Sig)) methSigs)
              (DelegateSpecs' : ilist (B := fun nadt => ADT (delegateeSig nadt)) Delegatees )
              (DelegateSpecs := ith DelegateSpecs')
-             (cAbsR :
+             (cAbsR_mono :
                 forall
                   (DelegateReps : Fin.t DelegateIDs -> Type)
                   (DelegateImpls : forall idx,
                                      ComputationalADT.pcADT (DelegateSigs idx) (DelegateReps idx))
                   (ValidImpls
-                   : forall (idx : Fin.t DelegateIDs) RCods,
+                   : forall idx : Fin.t DelegateIDs,
                        refineADT RCods (DelegateSpecs idx)
                                  (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls idx)))),
                   RepT -> rep DelegateReps -> Prop)
@@ -648,7 +642,7 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
                   (DelegateImpls : forall idx,
                                      ComputationalADT.pcADT (DelegateSigs idx) (DelegateReps idx))
                   (ValidImpls
-                   : forall (idx : Fin.t DelegateIDs) RCods,
+                   : forall idx : Fin.t DelegateIDs,
                        refineADT RCods (DelegateSpecs idx)
                                  (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls idx)))),
                   RepT -> rep DelegateReps -> Prop)
@@ -657,13 +651,13 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
                                            (DelegateImpls : forall idx,
                                                               ComputationalADT.pcADT (DelegateSigs idx) (DelegateReps idx))
                                            (ValidImpls
-                                            : forall (idx : Fin.t DelegateIDs) RCods,
+                                            : forall idx : Fin.t DelegateIDs,
                                                 refineADT RCods (DelegateSpecs idx)
                                                           (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls idx)))),
                                            Iterate_Dep_Type_BoundedIndex
                                              (fun idx =>
                                                 @refineConstructor
-                                                  (RepT) (rep DelegateReps) (cAbsR _ _ ValidImpls)
+                                                  (RepT) (rep DelegateReps) (cAbsR_mono _ _ ValidImpls)
                                                   (consDom (Vector.nth consSigs idx))
                                                   (getConsDef consDefs idx)
                                                   (LiftcConstructor _ _ (ith (cConstructors DelegateReps DelegateImpls) idx))))
@@ -672,7 +666,7 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
                                       (DelegateImpls : forall idx,
                                                          ComputationalADT.pcADT (DelegateSigs idx) (DelegateReps idx))
                                       (ValidImpls
-                                       : forall (idx : Fin.t DelegateIDs) RCods,
+                                       : forall idx : Fin.t DelegateIDs,
                                            refineADT RCods (DelegateSpecs idx)
                                              (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls idx))))
                                       RCods,
@@ -680,11 +674,11 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
                                         (fun idx =>
                                            @refineMethod
                                              RepT (rep DelegateReps)
-                                             (cAbsR _ _ ValidImpls)
+                                             (cAbsR_mono _ _ ValidImpls)
                                              (cAbsR_Anti _ _ ValidImpls)
+                                             RCods
                                              (methDom (Vector.nth methSigs idx))
                                              (methCod (Vector.nth methSigs idx))
-                                             (RCods idx)
                                              (getMethDef methDefs idx)
                                              (LiftcMethod (ith (cMethods DelegateReps DelegateImpls) idx))))
   : FullySharpenedUnderDelegates
@@ -695,8 +689,8 @@ Lemma refineADT_BuildADT_ReplaceConstructor_sigma
         Sharpened_Implementation := Notation_Friendly_BuildMostlySharpenedcADT _ rep
                                                                                cConstructors cMethods;
         Sharpened_DelegateSpecs := DelegateSpecs |}.
-      refine (Notation_Friendly_FullySharpened_BuildMostlySharpenedcADT RCods consDefs
-                                                                      methDefs _ rep cConstructors cMethods DelegateSpecs cAbsR cAbsR_Anti
+      refine (Notation_Friendly_FullySharpened_BuildMostlySharpenedcADT (RCods := RCods) consDefs
+                                                                      methDefs _ rep cConstructors cMethods DelegateSpecs cAbsR_mono cAbsR_Anti
                                                                       cConstructorsRefinesSpec cMethodsRefinesSpec).
   Defined.
 
@@ -869,7 +863,7 @@ Ltac FullySharpenEachMethod DelegateSigs DelegateReps delegateSpecs :=
                         | Vector.t _ ?n => n
                         end in
     match goal with
-      |- FullySharpenedUnderDelegates (@BuildADT ?Rep ?n ?n' ?consSigs ?methSigs ?consDefs ?methDefs) _ =>
+      |- FullySharpenedUnderDelegates ?RCods (@BuildADT ?Rep ?n ?n' ?consSigs ?methSigs ?consDefs ?methDefs) _ =>
       ilist_of_evar_dep n
         (Fin.t NumDelegates -> Type)
         (fun D =>
@@ -888,6 +882,7 @@ Ltac FullySharpenEachMethod DelegateSigs DelegateReps delegateSpecs :=
         ltac:(fun cMeths =>
                 eapply (@Notation_Friendly_SharpenFully
                           Rep NumDelegates n n'
+                          RCods
                           consSigs methSigs
                           consDefs methDefs
                           DelegateSigs DelegateReps
@@ -900,7 +895,7 @@ Ltac FullySharpenEachMethod DelegateSigs DelegateReps delegateSpecs :=
                                   ComputationalADT.pcADT (delegateeSig (Vector.nth Delegatees idx)) (DelegateReps'' idx))
                          (ValidImpls''
                           : forall idx : Fin.t NumDelegates,
-                             refineADT (DelegateSpecs idx)
+                             refineADT RCods (DelegateSpecs idx)
                                        (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls'' idx))))
                             => @eq _)
              )))

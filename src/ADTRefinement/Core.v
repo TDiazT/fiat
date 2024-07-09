@@ -11,6 +11,7 @@ Section MethodRefinement.
   (** Abstraction Relation *)
   Variable AbsR_mono : oldRep -> newRep -> Prop.
   Variable AbsR_anti : oldRep -> newRep -> Prop.
+  Variable R : forall {T : refinableType}, relation T.
 
   Notation "ro ⪯ rn" := (AbsR_mono ro rn) (at level 70).
   Notation "ro ⪰ rn" := (AbsR_anti ro rn) (at level 70).
@@ -90,19 +91,18 @@ Section MethodRefinement.
 >>  *)
 
 
-  Definition refineProd {A B X} (R : A -> B -> Prop )
-    := refineR  (fun (v : X * A) (v' : X * B) => fst v = fst v' /\ R (snd v) (snd v')).
+  Definition refineProd {A : refinableType} {X}
+    := refineR  (fun (v : X * A) (v' : X * A) => fst v = fst v' /\ R (snd v) (snd v')).
 
-  Definition RCod (cod : option Type) : Type :=
-    match cod with
-    | Some cod' =>  cod' ->  cod' -> Prop
-    | _ =>  unit
-    end.
+  (* Definition RCod (cod : option Type) : Type := *)
+  (*   match cod with *)
+  (*   | Some cod' =>  cod' ->  cod' -> Prop *)
+  (*   | _ =>  unit *)
+  (*   end. *)
 
   Fixpoint refineMethod'
            {dom : list Type}
-           {cod : option Type}
-           (R : RCod cod)
+           {cod : option refinableType}
     : methodType' oldRep dom cod
       -> methodType' newRep dom cod
       -> Prop :=
@@ -112,44 +112,42 @@ Section MethodRefinement.
           -> Prop
     with
     | nil =>
-      (match cod as c return
-             RCod c
-             -> methodType' oldRep [] c
+      match cod as c return
+             methodType' oldRep [] c
              -> methodType' newRep [] c
              -> Prop
       with
       | Some cod' =>
-        fun R oldMethod newMethod =>
-          refineProd R (r_o' <- oldMethod;
+        fun oldMethod newMethod =>
+          refineProd (r_o' <- oldMethod;
                         r_n' <- {r_n | fst r_o' ⪯ r_n};
                         ret (r_n', snd r_o'))
             newMethod
       | None =>
-        fun R oldMethod newMethod =>
+        fun oldMethod newMethod =>
           refineEq (r_o' <- oldMethod;
                         {r_n | r_o' ⪯ r_n})
             newMethod
-      end) R
+      end
     | cons D dom' =>
       fun oldMethod newMethod =>
         forall d : D,
-          @refineMethod' dom' cod R (oldMethod d)
+          @refineMethod' dom' cod (oldMethod d)
                         (newMethod d)
     end.
 
   Definition refineMethod
              {dom : list Type}
-             {cod : option Type}
-             (R : RCod cod)
+             {cod : option refinableType}
              (oldMethod : methodType oldRep dom cod)
              (newMethod : methodType newRep dom cod)
     := forall r_o r_n,
       r_o ⪰ r_n ->
-      @refineMethod' dom cod R (oldMethod r_o) (newMethod r_n).
+      @refineMethod' dom cod (oldMethod r_o) (newMethod r_n).
 
     Fixpoint refineMethod_eq'
            {dom : list Type}
-           {cod : option Type}
+           {cod : option refinableType}
     : methodType' oldRep dom cod
       -> methodType' oldRep dom cod
       -> Prop :=
@@ -180,7 +178,7 @@ Section MethodRefinement.
 
   Definition refineMethod_eq
              {dom : list Type}
-             {cod : option Type}
+             {cod : option refinableType}
              (oldMethod : methodType oldRep dom cod)
              (newMethod : methodType oldRep dom cod)
     := forall r_o,
@@ -188,28 +186,30 @@ Section MethodRefinement.
 
 End MethodRefinement.
 
-Record refineADT {Sig} RCods (A B : ADT Sig) :=
+Record refineADT RCods {Sig} (A B : ADT Sig) :=
   refinesADT {
-      AbsR : _;
-      AbsR_Anti : _;
+      AbsR_mono : _;
+      AbsR_anti : _;
+      (* RCods : _; *)
+      (* RCods_Trans : forall A, Transitive (RCods A) ; *)
       ADTRefinementPreservesConstructors
       : forall idx : ConstructorIndex Sig,
           @refineConstructor
-            (Rep A) (Rep B) AbsR
+            (Rep A) (Rep B) AbsR_mono
             (ConstructorDom Sig idx)
             (Constructors A idx)
             (Constructors B idx);
       ADTRefinementPreservesMethods
       : forall idx : MethodIndex Sig,
           @refineMethod
-            (Rep A) (Rep B) AbsR AbsR_Anti
+            (Rep A) (Rep B) AbsR_mono AbsR_anti
+            RCods
             (fst (MethodDomCod Sig idx))
             (snd (MethodDomCod Sig idx))
-            (RCods idx)
             (Methods A idx)
             (Methods B idx) }.
 (** We should always just unfold [refineMethod] and [refineConstructor]
     into [refine], so that we can rewrite with lemmas about [refine]. *)
 
 
-Notation "ro ≃ rn" := (@AbsR _ _ _ _ ro rn) (at level 70).
+(* Notation "ro ≃ rn" := (@AbsR_mono _ _ _ _ ro rn) (at level 70). *)

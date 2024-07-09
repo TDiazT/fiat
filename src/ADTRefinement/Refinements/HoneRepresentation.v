@@ -26,7 +26,7 @@ Section HoneRepresentation.
 
   Fixpoint absMethod'
              (dom : list Type)
-             (cod : option Type)
+             (cod : option refinableType)
     : (oldRep -> methodType' oldRep dom cod)
       -> newRep -> (methodType' newRep dom cod) :=
     match dom return
@@ -59,23 +59,17 @@ Section HoneRepresentation.
 
   Definition absMethod
              (dom : list Type)
-             (cod : option Type)
+             (cod : option refinableType)
              (oldMethod : methodType oldRep dom cod)
     : methodType newRep dom cod :=
     absMethod' dom cod oldMethod.
 
-  Definition RCod_eq (cod : option Type) : Core.RCod cod :=
-    match cod with
-    | Some cod' => eq
-    | None => tt
-    end.
-
   Lemma refine_absMethod
         (dom : list Type)
-        (cod : option Type)
-        (R : RCod cod) {HR : RCodReflexive cod R}
+        (cod : option refinableType)
+        RCods {RCodsRefl : forall A, Reflexive (RCods A)}
         (oldMethod : methodType oldRep dom cod)
-  : @refineMethod oldRep newRep AbsR_mono AbsR_anti _ _ R
+  : @refineMethod oldRep newRep AbsR_mono AbsR_anti RCods _ _
                    oldMethod
                    (absMethod oldMethod).
   Proof.
@@ -87,7 +81,7 @@ Section HoneRepresentation.
         exists v. repeat split.
         repeat computes_to_econstructor; eauto.
         destruct v; simpl in *; subst; econstructor.
-        apply HR.
+        reflexivity.
       + destruct (H0 _ H) as [or' [Comp_or AbsR_or'' ] ].
         repeat computes_to_econstructor; eauto.
     - intro; simpl; intros.
@@ -155,7 +149,7 @@ Section HoneRepresentation.
   Lemma refineADT_Build_ADT_Rep_default
         Sig
         RCods
-        {HR : forall idx, RCodReflexive (snd (MethodDomCod Sig idx)) (RCods idx)}
+        {RCodsRefl : forall A, Reflexive (RCods A)}
         oldConstrs oldMeths :
     refineADT
       RCods
