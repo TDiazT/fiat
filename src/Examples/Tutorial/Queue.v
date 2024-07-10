@@ -79,13 +79,12 @@ Lemma refine_testnil : forall A `{Complete A} (ls : list A) B R (c1 cnil ccons :
     (ls = nil -> refineR R c1 cnil)
     -> (ls <> nil -> refineR R c1 ccons)
     -> refineR R c1 (testnil ls cnil ccons).
-Proof.
+Proof with eauto with icp.
   intros ? ? ls.
-  induction ls using list_catch; try intuition congruence.
+  induction ls using exc_list_ind; try intuition congruence.
   intros ? ? ? ? ? Hcontra.
-  inversion Hcontra.
-(* Qed. *)
-Admitted.
+  inversion Hcontra...
+Qed.
 
 Add Parametric Morphism A B
 : (@testnil A (Comp B))
