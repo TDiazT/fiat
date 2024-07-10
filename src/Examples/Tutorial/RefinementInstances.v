@@ -134,7 +134,7 @@ Section ListICP.
   Qed.
 
   #[export]
-    Instance groundList : Ground (list A).
+    Instance completeMinimalList : CompleteMinimal (list A).
   Proof with eauto with icp.
     constructor; intros l; induction l as [|? ? IH |] using exc_list_ind; inversion 1; intros l'; inversion 1; subst...
     f_equal...
@@ -237,7 +237,7 @@ Section ProdICP.
   Qed.
 
   #[export]
-    Instance groundProd : Ground (A * B).
+    Instance completeMinimalProd : CompleteMinimal (A * B).
   Proof with eauto with icp.
     constructor; intros ab; induction ab; inversion 1; subst; intros ab'; induction ab'; inversion 1; subst...
     f_equal; apply is_complete_minimal...
@@ -306,7 +306,7 @@ Section OptionICP.
     }.
 
   #[export]
-    Instance GroundOption : Ground (option A).
+    Instance CompleteMinimalOption : CompleteMinimal (option A).
   Proof with eauto with icp.
     constructor; unfold_refinement; intros ?; inversion 1; subst; intros ?; inversion 1; subst...
     f_equal; apply is_complete_minimal; eauto.
