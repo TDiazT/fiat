@@ -1,6 +1,6 @@
 Require Import Fiat.Examples.Tutorial.RefinementInstances.
 
-Require Export Fiat.Common.Coq__8_4__8_5__Compat.
+(* Require Export Fiat.Common.Coq__8_4__8_5__Compat. *)
 Require Import Coq.Strings.Ascii
         Coq.Bool.Bool.
 
@@ -25,9 +25,6 @@ Require Import Coq.Logic.Eqdep_dec
         Fiat.ADTNotation.BuildComputationalADT
         Fiat.ADTRefinement.GeneralBuildADTRefinements.
 
-Require Import Coq.Logic.Eqdep_dec
-        Fiat.ADT.ComputationalADT
-        Fiat.ADTNotation.BuildComputationalADT.
 
 Import Lists.List.ListNotations.
 
@@ -199,6 +196,7 @@ Section data.
   Instance mono_absRel : forall abs, IncRef (absRel abs) .
     unfold absRel.
     intros abs.
+    f_equal.
     eapply IncRefEqR.
     unfold_complete.
     - intros. apply is_complete_app.
