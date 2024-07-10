@@ -44,7 +44,7 @@ Hint Extern 0 => match goal with
     end : icp.
 
 Section ListICP.
-  Context {A : Type} .
+  Context {A : Type} `{HRA : Refinable A}.
 
   Reserved Infix "⊑l" (at level 70).
   Inductive refinement_list : list A -> list A -> Prop :=
@@ -102,6 +102,8 @@ Section ListICP.
     - cbn. constructor.
   Qed.
 
+  Context `{HCA : Complete A}.
+
   Inductive is_complete_list : list A -> Prop :=
   | is_complete_nil : is_complete_list nil
   | is_complete_cons : forall (a : A) (l : list A), is_complete a -> is_complete_list l -> is_complete_list (cons a l).
@@ -134,10 +136,10 @@ Section ListICP.
   Qed.
 
   #[export]
-    Instance completeMinimalList : CompleteMinimal (list A).
+    Instance completeMinimalList `{@CompleteMinimal A HRA HCA} : CompleteMinimal (list A).
   Proof with eauto with icp.
     constructor; intros l; induction l as [|? ? IH |] using exc_list_ind; inversion 1; intros l'; inversion 1; subst...
-    f_equal...
+    f_equal... eapply is_complete_minimal; eauto.
   Qed.
 
 End ListICP.
@@ -177,9 +179,7 @@ Hint Extern 0 =>
 
 
 Section ProdICP.
-  Context {A B : Type}.
-  Hypotheses (HAnot_impl : forall a : A, a ⊑ ? A)
-    (HBnot_impl : forall b : B, b ⊑ ? B).
+  Context {A B : Type} `{HRA : Refinable A} `{HRB : Refinable B}.
 
   Inductive refinement_prod : A * B -> A * B -> Prop :=
   | is_refinement_pair : forall (a1 a2 : A) (b1 b2 : B),
@@ -197,12 +197,17 @@ Section ProdICP.
     - intros x. induction x using exc_prod_ind; constructor; apply is_reflexive.
   Defined.
 
+  Hypotheses (HAnot_impl : forall a : A, a ⊑ ? A)
+    (HBnot_impl : forall b : B, b ⊑ ? B).
+
   Lemma fst_ref : forall p p' : A * B,
       p ⊑ p' ->
       fst p ⊑ fst p'.
   Proof.
     intros ? ? Hprec.
-    inversion Hprec; subst; eauto.
+    inversion Hprec; subst.
+    - eauto.
+    - cbn. apply HAnot_impl.
   Qed.
 
   Lemma snd_ref : forall p p' : A * B,
@@ -212,6 +217,8 @@ Section ProdICP.
     intros ? ? Hprec.
     destruct Hprec; cbn; eauto.
   Qed.
+
+  Context `{HCA : Complete A} `{HCB : Complete B}.
 
   Inductive is_complete_prod : A * B -> Prop :=
   | is_complete_pair: forall (a : A) (b : B), is_complete a -> is_complete b -> is_complete_prod (a, b).
@@ -237,11 +244,11 @@ Section ProdICP.
   Qed.
 
   #[export]
-    Instance completeMinimalProd : CompleteMinimal (A * B).
+    Instance completeMinimalProd `{@CompleteMinimal A HRA HCA} `{@CompleteMinimal B HRB HCB}: CompleteMinimal (A * B).
   Proof with eauto with icp.
     constructor; intros ab; induction ab; inversion 1; subst; intros ab'; induction ab'; inversion 1; subst...
     f_equal; apply is_complete_minimal...
-  Defined.
+  Qed.
 
 End ProdICP.
 
@@ -268,7 +275,7 @@ Axioms
   end : icp.
 
 Section OptionICP.
-  Context {A : Type}.
+  Context {A : Type} {HRA : Refinable A}.
 
   Reserved Infix "⊑o" (at level 10).
   Inductive refinementOption : option A -> option A -> Prop :=
@@ -281,7 +288,7 @@ Section OptionICP.
   Hint Constructors refinementOption : typeclass_instances.
 
   #[export]
-    Program Instance RefinableOption : Refinable (option A) :=
+    Program Instance refinableOption : Refinable (option A) :=
     { refinement := refinementOption }.
   Next Obligation with eauto with icp.
     unfold Relation_Definitions.transitive; intros [] [] [] H1 H2; try contradiction; eauto; inversion H1; subst; exc_eauto; try constructor...
@@ -291,6 +298,8 @@ Section OptionICP.
   Next Obligation.
     intros []; constructor. reflexivity.
   Qed.
+
+  Context {HCA : Complete A}.
 
   Inductive is_complete_option : option A -> Prop :=
   | is_complete_option_None : is_complete_option None
@@ -306,7 +315,7 @@ Section OptionICP.
     }.
 
   #[export]
-    Instance CompleteMinimalOption : CompleteMinimal (option A).
+    Instance CompleteMinimalOption `{@CompleteMinimal A HRA HCA} : CompleteMinimal (option A).
   Proof with eauto with icp.
     constructor; unfold_refinement; intros ?; inversion 1; subst; intros ?; inversion 1; subst...
     f_equal; apply is_complete_minimal; eauto.

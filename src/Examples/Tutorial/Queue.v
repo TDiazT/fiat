@@ -144,6 +144,7 @@ Ltac done := try match goal with
                  end; finish honing.
 Section data.
   Variable data : Set.
+  Hypothesis (Hdata_not_impl : forall d : data, d ⊑ ? data).
 
   (* TODO: Change. Should consider ? *)
   (* Instance : Refinable data := mkEqRefinable data. *)
@@ -170,7 +171,7 @@ Section data.
   Open Scope methDefParsing.
 
   (** The specification of functional correctness *)
-  Definition spec : ADT sig :=
+  Definition naive_implementation : ADT sig :=
     Def ADT
     {
       rep := (list data),
@@ -189,114 +190,109 @@ Section data.
   (* We define an abstraction relation, connecting abstract and concrete states.
    * Classic trick: simulate a queue with two stacks,
    * one of which needs to be reversed to reproduce the abstract queue. *)
-  Definition absRel (abs : list data) (conc : list data * list data) :=
-      abs = fst conc ++ rev (snd conc).
+  Definition rel (naive : list data) (opt : list data * list data) :=
+      naive = fst opt ++ rev (snd opt).
 
 
-  Instance mono_absRel : forall abs, IncRef (absRel abs) .
-    unfold absRel.
-    intros abs.
-    f_equal.
+  Instance IncRefRel : forall naive, IncRef (rel naive) .
+    unfold rel.
+    intros naive.
     eapply IncRefEqR.
     unfold_complete.
     - intros. apply is_complete_app.
       apply is_complete_fst; auto.
       apply is_complete_rev. apply is_complete_snd; auto.
     - unfold is_monotone; intros. apply app_ref.
-      + apply fst_ref; eauto.
+      + eapply fst_ref; eauto. constructor.
       + apply rev_ref; eauto.
         apply snd_ref; eauto.
+        constructor.
   Defined.
 
-  Definition absRel_mono (abs : list data) (conc : list data * list data) :=
-    (ir_mono (absRel abs)) conc.
+  Definition rel_mono (naive : list data) (opt : list data * list data) :=
+    (ir_mono (rel naive)) opt.
 
-  Definition absRel_anti (abs : list data) (conc : list data * list data) :=
-    (ir_anti (absRel abs)) conc.
+  Definition rel_anti (naive : list data) (opt : list data * list data) :=
+    (ir_anti (rel naive)) opt.
 
   Lemma list_data_refl : forall l : list data,
       l ⊑ l.
   Proof.
-    induction l using list_catch; constructor.
-    - reflexivity.
-    - apply IHl.
+    induction l using exc_list_ind; constructor; eauto.
+    reflexivity.
   Qed.
 
-  Lemma absRel_implies_mono : forall abs conc,
-      absRel abs conc -> absRel_mono abs conc.
+  Lemma rel_implies_mono : forall abs conc,
+      rel abs conc -> rel_mono abs conc.
   Proof.
-    intros abs conc. unfold absRel. intros ->.
-    simpl. unfold absRel_mono. simpl.
+    intros abs conc. unfold rel. intros ->.
+    simpl. unfold rel_mono. simpl.
     apply list_data_refl.
   Qed.
 
   (* The appropriate initial states are related. *)
-  Lemma absRel_initial : absRel nil (nil, nil).
+  Lemma rel_initial : rel nil (nil, nil).
   Proof.
     reflexivity.
   Qed.
-  Lemma absRel_nil_not_impl : forall l, absRel_mono l (nil, ?).
+
+  Lemma rel_nil_not_impl : forall l, rel_mono l (nil, ? (list data)).
   Proof.
-    induction l using list_catch; cbn; eauto; constructor.
+    induction l using exc_list_ind; cbn; constructor.
   Qed.
 
-  Definition rel_enqueue (naive : list data) (opt : list data * list data) := forall d, absRel naive opt ->
-                                                                                   absRel (naive ++ d :: nil) (fst opt, ?).
-
-  (* Definition ir_rel_enqueue (naive : list data) (opt : list data * list data) := *)
-  (*   ir_mono (rel_enqueue naive) opt. *)
+  Definition rel_enqueue (naive : list data) (opt : list data * list data) :=
+    forall d, rel naive opt ->
+         rel (naive ++ d :: nil) (fst opt, ? (list data)).
 
   (* The simple implementation of "push" preserves the relation. *)
-  Lemma absRel_push : forall d abs conc, absRel_anti abs conc
-    -> absRel_mono (abs ++ d :: nil) (fst conc, ?).
+  Lemma ir_rel_enqueue : forall d naive opt, rel_anti naive opt
+    -> rel_mono (naive ++ d :: nil) (fst opt, ? (list data)).
   Proof.
-    unfold absRel_mono; simpl; intros; subst.
-    unfold absRel_anti in H.
+    unfold rel_mono; simpl; intros; subst.
+    unfold rel_anti in H.
     simpl in H.
-    destruct H as [_ Heq]. rewrite Heq.
+    destruct H as [_ Heq]. rewrite <- Heq.
     cbn in *.
-    (* assert (Heq' : ? = ? ++ [d]) by reflexivity. *)
-    (* rewrite Heq'. *)
     rewrite <- app_assoc.
     apply app_ref.
-    -  reflexivity.
+    - reflexivity.
     - constructor.
   Qed.
 
 
   (* When the concrete state is empty, so must be the abstract state. *)
-  Lemma absRel_must_be_nil : forall abs conc,
-    absRel_anti abs conc
-    -> fst conc = nil
-    -> snd conc = nil
-    -> abs = nil.
+  Lemma rel_must_be_nil : forall naive opt,
+    rel_anti naive opt
+    -> fst opt = nil
+    -> snd opt = nil
+    -> naive = nil.
   Proof.
-    unfold absRel_anti; destruct conc; simpl; intros; subst.
+    unfold rel_anti; destruct opt; simpl; intros; subst.
     simpl in H. inversion H. auto.
   Qed.
 
   (* The abstract queue may be expanded into its first element and tail,
    * if it's related to a concrete state with nonempty first list.
    * In general, such a property depends on a list being nonempty. *)
-  Lemma eta_abs_fst : forall abs conc,
-    absRel_anti abs conc
-    -> fst conc <> nil
-    -> abs = hd dummy abs :: tl abs.
+  Lemma eta_naive_fst : forall naive opt,
+    rel_anti naive opt
+    -> fst opt <> nil
+    -> naive = hd dummy naive :: tl naive.
   Proof.
-    unfold absRel_anti; destruct abs; simpl; intuition.
-    destruct (fst conc); simpl in *; intuition congruence.
+    unfold rel_anti; destruct naive; simpl; intuition.
+    destruct (fst opt); simpl in *; intuition congruence.
   Qed.
 
   (* The abstract queue may be expanded into its first element and tail,
    * if it's related to a concrete state with nonempty second list. *)
-  Lemma eta_abs_snd : forall abs conc,
-    absRel_anti abs conc
-    -> snd conc = hd dummy (snd conc) :: tl (snd conc)
-    -> abs = hd dummy abs :: tl abs.
+  Lemma eta_naive_snd : forall naive opt,
+    rel_anti naive opt
+    -> snd opt = hd dummy (snd opt) :: tl (snd opt)
+    -> naive = hd dummy naive :: tl naive.
   Proof.
-    unfold absRel_anti; destruct abs; simpl; intros.
-    destruct (snd conc); simpl in *; intuition.
-    (* symmetry in H2. *)
+    unfold rel_anti; destruct naive; simpl; intros.
+    destruct (snd opt); simpl in *; intuition.
     apply (f_equal (@List.length _)) in H2.
     repeat rewrite app_length in H2; simpl in H2.
     omega.
@@ -305,156 +301,63 @@ Section data.
 
   (* The case for preserving the relation on "pop",
    * when we need to reverse the second list. *)
-  Lemma absRel_reversed_rep : forall abs conc r,
-    absRel_anti abs conc
-    -> fst conc = nil
-    -> snd conc <> nil
-    -> r = rev (snd conc)
-    -> absRel_mono (tl abs) (tl r, nil).
+  Lemma rel_reversed_rep : forall naive opt r,
+    rel_anti naive opt
+    -> fst opt = nil
+    -> snd opt <> nil
+    -> r = rev (snd opt)
+    -> rel_mono (tl naive) (tl r, nil).
   Proof.
-    unfold absRel_anti, absRel_mono; intuition simpl in *; subst.
+    unfold rel_anti, rel_mono; intuition simpl in *; subst.
     autorewrite with core; auto.
-    destruct H as [_ ->]; simpl.
+    destruct H as [_ <-]; simpl.
     apply list_data_refl.
   Qed.
 
   (* The case for returning the right data value on "pop",
    * when we need to reverse the second list. *)
-  Lemma absRel_reversed_data : forall abs conc r,
-    absRel_anti abs conc
-    -> fst conc = nil
-    -> snd conc <> nil
-    -> r = rev (snd conc)
-    -> hd dummy abs = hd dummy r.
+  Lemma rel_reversed_data : forall naive opt r,
+    rel_anti naive opt
+    -> fst opt = nil
+    -> snd opt <> nil
+    -> r = rev (snd opt)
+    -> hd dummy naive = hd dummy r.
   Proof.
-    unfold absRel_anti; intuition simpl in *; destruct H; simpl in *; subst; auto.
+    unfold rel_anti; intuition simpl in *; destruct H; simpl in *; subst; auto.
   Qed.
 
   (* The case for preserving the relation on "pop",
    * in the fast path where the first list is not empty. *)
-  Lemma absRel_fast_rep : forall abs conc,
-    absRel_anti abs conc
-    -> fst conc <> nil
-    -> absRel_mono (tl abs) (tl (fst conc), snd conc).
+  Lemma rel_fast_rep : forall naive opt,
+    rel_anti naive opt
+    -> fst opt <> nil
+    -> rel_mono (tl naive) (tl (fst opt), snd opt).
   Proof.
-    unfold absRel_anti, absRel_mono; intuition simpl in *.
+    unfold rel_anti, rel_mono; intuition simpl in *.
     destruct H; subst.
-    destruct (fst conc); simpl in *. tauto.
+    destruct (fst opt); simpl in *. tauto.
     apply list_data_refl.
   Qed.
 
   (* The case for returning the right data value on "pop",
    * in the fast path where the first list is not empty. *)
-  Lemma absRel_fast_data : forall abs conc,
-    absRel_anti abs conc
-    -> fst conc <> nil
-    -> hd dummy abs = hd dummy (fst conc).
+  Lemma rel_fast_data : forall naive opt,
+    rel_anti naive opt
+    -> fst opt <> nil
+    -> hd dummy naive = hd dummy (fst opt).
   Proof.
-    unfold absRel_anti; intuition simpl in *.
+    unfold rel_anti; intuition simpl in *.
     destruct H. subst; auto.
-    induction (fst conc) using list_catch; simpl in *; tauto.
+    induction (fst opt) using exc_list_ind; simpl in *; tauto.
   Qed.
 
 
 Require Import BuildADTRefinements.HoneRepresentation.
 
-(* Definition RSig : forall (idx : MethodIndex sig), Core.RCod (snd (MethodDomCod sig idx) ) . *)
-(*   repeat refine (fun idx => proj1_sig (cons_RCods _ _ idx)). *)
-(*   - simpl. exact tt. *)
-(*   - simpl. exact eq. *)
-(*   -  eapply empty_RCods. *)
-(* Defined. *)
 
-
-(* Ltac refineConstr := *)
-(*   repeat (first [eapply refine_Constructors_nil *)
-(*                     | eapply refine_Constructors_cons; *)
-(*                       [ intros; simpl; intros; *)
-(*                         match goal with *)
-(*                         |  |- refine _ (?E _ _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ (?E _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ (?E _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ (?E _ _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ (?E _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ (?E _ _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ (?E _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ (?E _) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ (?E) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         | _ => idtac *)
-(*                         end | ] ]). *)
-(* Tactic Notation "hone" "representation" "using" open_constr(AbsR') := *)
-(*   eapply SharpenStep; *)
-(*   [eapply refineADT_BuildADT_Rep_refine_All with (AbsR := AbsR'); *)
-(*     [ repeat (first [eapply refine_Constructors_nil *)
-(*                     | eapply refine_Constructors_cons; *)
-(*                       [ intros; simpl; intros; *)
-(*                         match goal with *)
-(*                         |  |- refine _ (?E _ _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ (?E _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ (?E _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ (?E _ _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ (?E _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ (?E _ _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ (?E _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ (?E _) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ (?E) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         | _ => idtac *)
-(*                         end | ] ]) *)
-(*     | repeat (first [eapply refine_Methods_nil *)
-(*                     | eapply refine_Methods_cons; *)
-(*                       [ intros; simpl; intros; *)
-(*                         match goal with *)
-(*                         |  |- refine _ (?E _ _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ (?E _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ (?E _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ (?E _ _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ (?E _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ (?E _ _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ (?E _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ (?E _) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                           | _ => idtac *)
-(*                         end | ] *)
-(*                     ])] *)
-(*   | ]. *)
-
-(* Tactic Notation "hone" "representation" "using" open_constr(AbsR') "and" open_constr(AbsR_Anti') := *)
-(*   eapply SharpenStep; *)
-(*   [idtac|eapply refineADT_BuildADT_Rep_refine_All with (AbsR_mono := AbsR') (AbsR_anti := AbsR_Anti'); *)
-(*     [ repeat (first [eapply refine_Constructors_nil *)
-(*                     | eapply refine_Constructors_cons; *)
-(*                       [ intros; simpl; intros; *)
-(*                         match goal with *)
-(*                         |  |- refine _ (?E _ _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ (?E _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ (?E _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ (?E _ _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ (?E _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ (?E _ _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ (?E _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ (?E _) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ (?E) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         | _ => idtac *)
-(*                         end | ] ]) *)
-(*     | repeat (first [eapply refine_Methods_nil *)
-(*                     | eapply refine_Methods_cons; *)
-(*                       [ intros; simpl; unfold refineMethod, refineMethod'; intros; *)
-(*                         match goal with *)
-(*                         |  |- refine _ _ (?E _ _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ _ (?E _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ _ (?E _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ _ (?E _ _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ _ (?E _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ _ (?E _ _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ _ (?E _ _) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                         |  |- refine _ _ (?E _) => is_evar E; let H := fresh in fast_set (H := E) *)
-(*                           | _ => idtac *)
-(*                         end | ] *)
-(*                     ])] *)
-(*   | ]. *)
-
-
-Instance option_Reflexive {A} `{Reflexive A} `{Refinable A} : Reflexive (refinableOption.(@refinement (option A))). Admitted.
-  (* Instance rprodreflexive {A B C D} (R1 : A -> B -> Prop) (R2 : C -> D -> Prop) `{Reflexive R1} `{Reflexive R2} : Reflexive (R1 ) *)
+Instance option_Reflexive {A} `{Reflexive A} `{Refinable A} : Reflexive (refinableOption.(@refinement (option A))).
+typeclasses eauto.
+Qed.
 
 
 Instance refineR_Reflexive A (R : A -> A -> Prop) `{Reflexive A R} : Reflexive (refineR R ).
@@ -511,19 +414,20 @@ Admitted.
   Lemma is_complete_app_l {A} `{Complete A} :
     forall l l', is_complete (l ++ l') ->
             is_complete l /\ is_complete l'.
-  Proof.
-    induction l using list_catch; cbn; eauto.
+  Proof with eauto with icp.
+    induction l using exc_list_ind; cbn; eauto.
     - split; eauto; constructor.
     - intros ? Hc. inversion Hc; subst. split; eauto.
       * constructor; eauto. apply (IHl l'); eauto.
       * apply IHl; eauto.
-    - admit. (* not implemented case *)
+    - inversion 1...
+  (* Qed. *)
   Admitted.
 
   Lemma is_complete_rev_l {A} `{Complete A} :
     forall l, is_complete (rev l) -> is_complete l.
   Proof.
-    induction l using list_catch.
+    induction l using exc_list_ind.
     - eauto.
     - simpl. intros Hc.
       apply is_complete_app_l in Hc.
@@ -534,138 +438,28 @@ Admitted.
     - cbn. intros Hcontra. apply Hcontra.
   Qed.
 
-(* Ltac FullySharpenEachMethod delegateSigs delegateSpecs cRep' cAbsR' := *)
-(*   match goal with *)
-(*     |- Sharpened (@BuildADT ?Rep ?consSigs ?methSigs ?consDefs ?methDefs) => *)
-(*     ilist_of_evar *)
-(*       (ilist (fun nadt => ComputationalADT.cADT (namedADTSig nadt)) delegateSigs) *)
-(*       (fun DelegateImpl Sig => ComputationalADT.cMethodType (cRep' DelegateImpl) (methDom Sig) (methCod Sig)) *)
-(*       methSigs *)
-(*       ltac:(fun cMeths => *)
-(*               ilist_of_evar *)
-(*                 (ilist (fun nadt => ComputationalADT.cADT (namedADTSig nadt)) delegateSigs) *)
-(*                 (fun DelegateImpl Sig => ComputationalADT.cConstructorType (cRep' DelegateImpl) (consDom Sig)) *)
-(*                 consSigs *)
-(*                 ltac:(fun cCons => *)
-(*                         eapply *)
-(*                           (@Notation_Friendly_SharpenFully *)
-(*                              _ *)
-(*                              consSigs *)
-(*                              methSigs *)
-(*                              consDefs *)
-(*                              methDefs *)
-(*                              delegateSigs *)
-(*                              cRep' *)
-(*                              cCons *)
-(*                              cMeths *)
-(*                              delegateSpecs *)
-(*                              cAbsR'))) *)
-(*   end; simpl; repeat split. *)
-
-(* Ltac FullySharpenEachMethod DelegateSigs DelegateReps delegateSpecs := *)
-(*     let Delegatees := constr:(Build_NamedDelegatees DelegateSigs DelegateReps) in *)
-(*     let DelegateSpecs := constr:(ith delegateSpecs) in *)
-(*     let NumDelegates := match type of DelegateSigs with *)
-(*                         | Vector.t _ ?n => n *)
-(*                         end in *)
-(*     match goal with *)
-(*       |- FullySharpenedUnderDelegates ?RCods (@BuildADT ?Rep ?n ?n' ?consSigs ?methSigs ?consDefs ?methDefs) _ => *)
-(*       ilist_of_evar_dep n *)
-(*         (* C *) *)
-(*         (Fin.t NumDelegates -> Type) *)
-(*         (* D *) *)
-(*         (fun D => *)
-(*            forall idx, *)
-(*              ComputationalADT.pcADT (delegateeSig (Vector.nth Delegatees idx)) (D idx)) *)
-(*         (* B *) *)
-(*         (fun Sig => ComputationalADT.cConstructorType Rep (consDom Sig)) *)
-(*         (* As *) *)
-(*         consSigs *)
-(*         (* k *) *)
-(*         ltac:(fun cCons => *)
-(*                 ilist_of_evar_dep n' *)
-(*                                   (Fin.t NumDelegates -> Type) *)
-(*                                   (fun D => *)
-(*                                      forall idx, *)
-(*              ComputationalADT.pcADT (delegateeSig (Vector.nth Delegatees idx)) (D idx)) *)
-(*         (fun Sig => ComputationalADT.cMethodType Rep (methDom Sig) (methCod Sig)) *)
-(*         methSigs *)
-(*         ltac:(fun cMeths => *)
-(*                 eapply (@Notation_Friendly_SharpenFully *)
-(*                           Rep NumDelegates n n' *)
-(*                           consSigs methSigs *)
-(*                           RCods *)
-(*                           consDefs methDefs *)
-(*                           DelegateSigs DelegateReps *)
-(*                           (fun _ => Rep) *)
-(*                           cCons cMeths *)
-(*                           delegateSpecs *)
-(*                           (fun *)
-(*                          (DelegateReps'' : Fin.t NumDelegates -> Type) *)
-(*                          (DelegateImpls'' : forall idx, *)
-(*                              ComputationalADT.pcADT (delegateeSig (Vector.nth Delegatees idx)) (DelegateReps'' idx)) *)
-(*                          (ValidImpls'' *)
-(*                           : forall (idx : Fin.t NumDelegates) RCods, *)
-(*                              refineADT (RCods idx) (DelegateSpecs idx) *)
-(*                                        (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls'' idx)))) *)
-(*                             => @eq _) *)
-(* (fun *)
-(*                          (DelegateReps'' : Fin.t NumDelegates -> Type) *)
-(*                          (DelegateImpls'' : forall idx, *)
-(*                              ComputationalADT.pcADT (delegateeSig (Vector.nth Delegatees idx)) (DelegateReps'' idx)) *)
-(*                          (ValidImpls'' *)
-(*                           : forall (idx : Fin.t NumDelegates) RCods, *)
-(*                              refineADT (RCods idx) (DelegateSpecs idx) *)
-(*                                        (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls'' idx)))) *)
-(*                             => @eq _) *)
-(*              ))) *)
-(*     end; try (simpl; repeat split; intros; subst). *)
-
-(* Ltac finish_SharpeningADT_WithoutDelegation := *)
-(*   eapply FullySharpened_Finish; *)
-(*   [ idtac *)
-(*   | FullySharpenEachMethod *)
-(*       (@Vector.nil ADTSig) *)
-(*       (@Vector.nil Type) *)
-(*       (ilist.inil (B := fun nadt => ADT (delegateeSig nadt))); *)
-(*     try simplify with monad laws; simpl; try refine pick eq; try simplify with monad laws; *)
-(*     try first [ simpl]; *)
-(*     (* Guard setoid rewriting with [refine_if_If] to only occur when there's *) *)
-(* (*     actually an [if] statement in the goal.  This prevents [setoid_rewrite] from *) *)
-(* (*     uselessly descending into folded definitions. *) *)
-(*     repeat lazymatch goal with *)
-(*              | [ |- context [ if _ then _ else _ ] ] => *)
-(*                setoid_rewrite refine_if_If at 1 *)
-(*            end; *)
-(*     repeat first [ *)
-(*              higher_order_reflexivity *)
-(*            | simplify with monad laws *)
-(*            | Implement_If_Then_Else *)
-(*            | Implement_If_Opt_Then_Else ] *)
-(*   | extract_delegate_free_impl *)
-(*   | simpl; higher_order_reflexivityT ]. *)
 
   Ltac finalize := finish_SharpeningADT_WithoutDelegation.
   (* Now we start deriving an implementation, in a correct-by-construction way. *)
 
 
-  Theorem implementation : FullySharpened SigRCods spec .
+  Theorem implementation : FullySharpened SigRCods naive_implementation .
   Proof.
     start sharpening ADT.
 
-    hone representation using absRel_mono and absRel_anti.
+    hone representation using rel_mono and rel_anti.
 
     - apply sigRCodsPreOrder.
 
     - monad_simpl.
 
-      pick_by (absRel_implies_mono absRel_initial).
+      pick_by (rel_implies_mono rel_initial).
       done.
 
     (* Enqueue *)
     -
       monad_simpl.
-      pick_by absRel_push.
+      pick_by ir_rel_enqueue.
       done.
 
     (* Dequeue *)
@@ -677,11 +471,11 @@ Admitted.
       refine_testnil (fst r_n).
       + apply is_complete_rev_l in H1.
         refine_testnil (snd r_n).
-        * assert (Hr_o_nil : r_o = nil) by (eapply absRel_must_be_nil; eauto).
+        * assert (Hr_o_nil : r_o = nil) by (eapply rel_must_be_nil; eauto).
           rewrite Hr_o_nil.
           refineEqOldSimpl; [reflexivity|].
           refineEqOldSimpl.
-          pick_by (absRel_implies_mono absRel_initial).
+          pick_by (rel_implies_mono rel_initial).
           done.
           refineEqOldSimpl.
           done.
@@ -693,9 +487,9 @@ Admitted.
           refine_let (rev (snd r_n)).
           erewrite eta_abs_snd with (abs := r_o) by eauto.
           monad_simpl.
-          pick_by absRel_reversed_rep.
+          pick_by rel_reversed_rep.
           monad_simpl.
-          erewrite absRel_reversed_data by eauto.
+          erewrite rel_reversed_data by eauto.
           done.
           done.
 
@@ -707,9 +501,9 @@ Admitted.
         erewrite eta_abs_fst with (abs := r_o) by eauto.
         monad_simpl.
         refineEqOldSimpl.
-        pick_by absRel_fast_rep.
+        pick_by rel_fast_rep.
         monad_simpl.
-        erewrite absRel_fast_data with (abs := r_o) by eauto.
+        erewrite rel_fast_data with (abs := r_o) by eauto.
         done.
         done.
       + refineEqOldSimpl.
@@ -947,12 +741,12 @@ Admitted.
   Print impl.
 
   (* Let's try that again, with more automation. *)
-  Hint Resolve absRel_initial absRel_push absRel_must_be_nil absRel_reversed_rep absRel_fast_rep.
+  Hint Resolve rel_initial rel_push rel_must_be_nil rel_reversed_rep rel_fast_rep.
 
   Theorem more_automated_implementation : FullySharpened spec.
   Proof.
     start sharpening ADT.
-    hone representation using absRel.
+    hone representation using rel.
 
     monad_simpl.
     pick.
@@ -979,7 +773,7 @@ Admitted.
     monad_simpl.
     pick.
     monad_simpl.
-    erewrite absRel_reversed_data by eauto.
+    erewrite rel_reversed_data by eauto.
     done.
 
     cbv beta.
@@ -989,7 +783,7 @@ Admitted.
     monad_simpl.
     pick.
     monad_simpl.
-    erewrite absRel_fast_data with (abs := r_o) by eauto.
+    erewrite rel_fast_data with (abs := r_o) by eauto.
     done.
 
     cleanup.
@@ -1004,17 +798,17 @@ Admitted.
     repeat match goal with
            | _ => progress monad_simpl
            | _ => pick
-           | [ H : absRel ?abs _ |- _ ] =>
+           | [ H : rel ?abs _ |- _ ] =>
              match abs with
              | nil => fail 1
              | _ => assert (abs = nil) by eauto; subst
              end
-           | [ _ : absRel ?abs_ ?conc |- context[match ?abs_ with nil => _ | _ :: _ => _ end] ] =>
+           | [ _ : rel ?abs_ ?conc |- context[match ?abs_ with nil => _ | _ :: _ => _ end] ] =>
              (erewrite eta_abs_fst with (abs := abs_) by eauto)
              || (erewrite eta_abs_snd with (abs := abs_) by eauto)
            | [ |- context[hd dummy _] ] =>
-             (erewrite absRel_reversed_data by eauto)
-             || (erewrite absRel_fast_data by eauto)
+             (erewrite rel_reversed_data by eauto)
+             || (erewrite rel_fast_data by eauto)
            end.
 
   Ltac queue := queue'; done.
@@ -1022,7 +816,7 @@ Admitted.
   Theorem even_more_automated_implementation : FullySharpened spec.
   Proof.
     start sharpening ADT.
-    hone representation using absRel; try queue.
+    hone representation using rel; try queue.
 
     refine_testnil (fst r_n); [
       refine_testnil (snd r_n); [ queue |
