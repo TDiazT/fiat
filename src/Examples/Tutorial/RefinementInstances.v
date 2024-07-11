@@ -135,6 +135,31 @@ Section ListICP.
     repeat constructor; eauto.
   Qed.
 
+  Lemma is_complete_app_inv :
+    forall l l' : list A, is_complete (l ++ l') ->
+                     is_complete l /\ is_complete l'.
+  Proof with eauto with icp.
+    induction l using exc_list_ind; cbn; eauto.
+    - split; eauto; constructor.
+    - intros ? Hc. inversion Hc; subst. split; eauto.
+      * constructor; eauto. apply (IHl l'); eauto.
+      * apply IHl; eauto.
+    - inversion 1...
+  Qed.
+
+  Lemma is_complete_rev_inv :
+    forall l : list A, is_complete (rev l) -> is_complete l.
+  Proof with eauto with icp.
+    induction l using exc_list_ind...
+    simpl. intros Hc.
+    apply is_complete_app_inv in Hc.
+    destruct Hc as [Hcl Hca].
+    constructor; eauto.
+    - inversion Hca; eauto.
+    -
+      apply IHl; eauto.
+  Qed.
+
   #[export]
     Instance completeMinimalList `{@CompleteMinimal A HRA HCA} : CompleteMinimal (list A).
   Proof with eauto with icp.

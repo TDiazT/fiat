@@ -397,32 +397,6 @@ Admitted.
 
   Hint Resolve complete_list_cons.
 
-  Lemma is_complete_app_l {A} `{Complete A} :
-    forall l l', is_complete (l ++ l') ->
-            is_complete l /\ is_complete l'.
-  Proof with eauto with icp.
-    induction l using exc_list_ind; cbn; eauto.
-    - split; eauto; constructor.
-    - intros ? Hc. inversion Hc; subst. split; eauto.
-      * constructor; eauto. apply (IHl l'); eauto.
-      * apply IHl; eauto.
-    - inversion 1...
-  (* Qed. *)
-  Admitted.
-
-  Lemma is_complete_rev_l {A} `{Complete A} :
-    forall l, is_complete (rev l) -> is_complete l.
-  Proof.
-    induction l using exc_list_ind.
-    - eauto.
-    - simpl. intros Hc.
-      apply is_complete_app_l in Hc.
-      destruct Hc.
-      constructor; eauto.
-      + inversion H1; eauto.
-      + apply IHl; eauto.
-    - cbn. intros Hcontra. apply Hcontra.
-  Qed.
 
 
   Ltac finalize := finish_SharpeningADT_WithoutDelegation.
@@ -449,13 +423,12 @@ Admitted.
       done.
 
     (* Dequeue *)
-    - pose (Habs := H0); clearbody Habs.
+    - pose (Hrel := H0); clearbody Hrel.
       destruct H0 as [Hc Heq].
-      (* rewrite <- Heq in Hc. *)
-      apply is_complete_app_l in Hc. destruct Hc.
+      apply is_complete_app_inv in Hc. destruct Hc.
 
       refine_testnil (fst r_n).
-      + apply is_complete_rev_l in H1.
+      + apply is_complete_rev_inv in H1.
         refine_testnil (snd r_n).
         * assert (Hr_o_nil : r_o = nil) by (eapply rel_must_be_nil; eauto).
           rewrite Hr_o_nil.
@@ -609,91 +582,6 @@ Admitted.
     (********)
     (* End copying tactic directly *)
     (********)
-
-    Unshelve.
-    4: { repeat unshelve econstructor. exact (list data * list data)%type.
-         shelve. shelve. }
-         (* simpl. depelim idx; simpl. exact (nil, nil). inversion idx. *)
-         (* simpl. depelim idx; simpl. exact (fun r d => (fst r, ?)). *)
-         (* depelim idx; simpl. *)
-         (* exact (fun r => ([], [], None)). *)
-         (* inversion idx. } *)
-    done.
-
-
-         shelve. shelve. }
-
-    2: { Unshelve. eapply SetoidMorphisms.refineMethod_refl. }
-
-    (* eapply (@Notation_Friendly_SharpenFully (list data * list data)%type 0 1 2 _ _ RSig *)
-    (*           (icons (Def Constructor "empty": rep :=   ret ([], []) )%consDef inil) *)
-    (*           _ *)
-    (*           (@Vector.nil ADTSig) *)
-    (*           (@Vector.nil Type) *)
-    (*           (fun _ => (list data * list data)%type) *)
-    (*           _ _ *)
-    (*           (ilist.inil (B := fun nadt => ADT (delegateeSig nadt))) *)
-
-    (*           (fun *)
-    (*               (DelegateReps'' : Fin.t 0 -> Type) *)
-    (*               (DelegateImpls'' : forall idx, *)
-    (*                   ComputationalADT.pcADT (delegateeSig (Vector.nth (Build_NamedDelegatees (@Vector.nil ADTSig) (@Vector.nil Type)) idx)) (DelegateReps'' idx)) *)
-    (*               (ValidImpls'' *)
-    (*                 : forall (idx : Fin.t 0) RCods', *)
-    (*                   refineADT RCods' ((ith (ilist.inil (B := fun nadt => ADT (delegateeSig nadt)))) idx) *)
-    (*                     (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls'' idx)))) *)
-    (*             => @eq _) *)
-
-    (*           (fun *)
-    (*               (DelegateReps'' : Fin.t 0 -> Type) *)
-    (*               (DelegateImpls'' : forall idx, *)
-    (*                   ComputationalADT.pcADT (delegateeSig (Vector.nth (Build_NamedDelegatees (@Vector.nil ADTSig) (@Vector.nil Type)) idx)) (DelegateReps'' idx)) *)
-    (*               (ValidImpls'' *)
-    (*                 : forall (idx : Fin.t 0) RCods', *)
-    (*                   refineADT RCods' ((ith (ilist.inil (B := fun nadt => ADT (delegateeSig nadt)))) idx) *)
-    (*                     (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls'' idx)))) *)
-    (*             => @eq _) *)
-    (*        ). *)
-    (* try (simpl; repeat split; intros; subst). *)
-
-    (* end; try (simpl; repeat split; intros; subst). *)
-
-      finalize.  Unshelve. 2:{ repeat econstructor. shelve. shelve. }. unshelve econstructor;  cbn.
-      exact eq.
-      exact eq.
-      simpl. intro idx.
-      Unshelve.
-      3: { simpl. intro. depelim idx. simpl. exact (nil, nil). simpl. inversion idx. }.
-      simpl.
-      depelim idx. simpl.
-      monad_simpl. pick. cbn.
-      3: depelim idx.
-      depelim idx. simpl.
-      done.
-      inversion idx; cbn. destruct idx. cbn
-
-
-      eapply FullySharpened_Finish;
-         [ admit | FullySharpenEachMethod
-             (@Vector.nil ADTSig)
-             (@Vector.nil Type)
-             (ilist.inil (B := fun nadt => ADT (delegateeSig nadt)));
-           try simplify with monad laws; simpl; try refine pick eq; try simplify with monad laws;
-           try first [ simpl];
-           (* Guard setoid rewriting with [refine_if_If] to only occur when there's *)
-           (*     actually an [if] statement in the goal.  This prevents [setoid_rewrite] from *)
-           (*     uselessly descending into folded definitions. *)
-           repeat lazymatch goal with
-             | [ |- context [ if _ then _ else _ ] ] =>
-                 setoid_rewrite refine_if_If at 1
-             end;
-           repeat first [
-               higher_order_reflexivity
-             | simplify with monad laws
-             | Implement_If_Then_Else
-             | Implement_If_Opt_Then_Else ]
-         | extract_delegate_free_impl
-         | simpl; higher_order_reflexivityT ].
   Defined.
 
   (* We can now extract a standlone Gallina term for this ADT. *)
