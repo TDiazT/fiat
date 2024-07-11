@@ -389,8 +389,6 @@ Definition SigRCods (A : refinableType) := (ARef A).(refinement).
 
     hone representation using rel_mono and rel_anti.
 
-    - apply sigRCodsPreOrder.
-
     - monad_simpl.
 
       pick_by (rel_implies_mono rel_initial).
@@ -535,9 +533,7 @@ Definition SigRCods (A : refinableType) := (ARef A).(refinement).
           end; try (simpl; repeat split; intros; subst).
 
     - eapply FullySharpened_Finish;
-      (* * apply sigRCodsPreOrder. *)
-      (* * my_tac (@Vector.nil ADTSig) (@Vector.nil Type). *)
-      [ apply sigRCodsPreOrder
+      [ try typeclasses eauto
         | my_tac (@Vector.nil ADTSig) (@Vector.nil Type);
           try simplify with monad laws; simpl; try refine pick eq; try simplify with monad laws;
           try first [ simpl];

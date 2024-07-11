@@ -426,7 +426,7 @@ Arguments DecADTSig : simpl never.
 
 Tactic Notation "hone" "representation" "using" open_constr(AbsR_mono') "and" open_constr(AbsR_anti') :=
   eapply SharpenStep;
-  [idtac|eapply refineADT_BuildADT_Rep_refine_All with (AbsR_mono := AbsR_mono') (AbsR_anti := AbsR_anti');
+  [try typeclasses eauto |eapply refineADT_BuildADT_Rep_refine_All with (AbsR_mono := AbsR_mono') (AbsR_anti := AbsR_anti');
     [ repeat (first [eapply refine_Constructors_nil
                     | eapply refine_Constructors_cons;
                       [ intros; simpl; intros;
