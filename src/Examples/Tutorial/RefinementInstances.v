@@ -174,6 +174,11 @@ End ListICP.
 #[export] Hint Constructors is_complete_list : icp.
 #[export] Hint Constructors is_complete_list : typeclass_instances.
 
+#[export] Hint Resolve app_ref : typeclass_instances.
+#[export] Hint Resolve rev_ref : typeclass_instances.
+#[export] Hint Resolve is_complete_app : typeclass_instances.
+#[export] Hint Resolve is_complete_rev : typeclass_instances.
+
 
 Symbol exc_prod_ind :
   forall {A B}
@@ -281,6 +286,11 @@ End ProdICP.
 #[export] Hint Constructors refinement_prod : typeclass_instances.
 #[export] Hint Constructors is_complete_prod : icp.
 #[export] Hint Constructors is_complete_prod : typeclass_instances.
+
+#[export] Hint Resolve fst_ref : typeclass_instances.
+#[export] Hint Resolve snd_ref : typeclass_instances.
+#[export] Hint Resolve is_complete_fst : typeclass_instances.
+#[export] Hint Resolve is_complete_snd : typeclass_instances.
 
 Axioms
   (noconf_unk_none : forall {A}, ? (option A) = @None A -> False)

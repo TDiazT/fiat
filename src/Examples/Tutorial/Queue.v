@@ -1,41 +1,54 @@
 Require Import Fiat.Examples.Tutorial.RefinementInstances.
 
-(* Require Export Fiat.Common.Coq__8_4__8_5__Compat. *)
-Require Import Coq.Strings.Ascii
-        Coq.Bool.Bool.
-
-Require Export Coq.Vectors.Vector
-        Coq.Bool.Bool
-        Coq.Bool.Bvector
-        Coq.Lists.List.
-
-Require Export Coq.Strings.String.
-
-Require Export Fiat.Common.DecideableEnsembles
-        Fiat.Common.List.ListFacts
-        Fiat.Common.BoolFacts
-        Fiat.Common.LogicFacts
-        Fiat.Common.List.FlattenList
-        Fiat.Common.Ensembles.IndexedEnsembles
-        Fiat.Common.IterateBoundedIndex
-        Fiat.Common.Tactics.CacheStringConstant.
-
-Require Import Coq.Logic.Eqdep_dec
-        Fiat.ADT.ComputationalADT
-        Fiat.ADTNotation.BuildComputationalADT
-        Fiat.ADTRefinement.GeneralBuildADTRefinements.
-
+Require Import
+  Coq.Strings.Ascii
+  Coq.Bool.Bool
+  Coq.Vectors.Vector
+  Coq.Bool.Bvector
+  Coq.Lists.List
+  Coq.Strings.String
+  Coq.Logic.Eqdep_dec.
 
 Import Lists.List.ListNotations.
 
+Require Export
+  Fiat.Common.DecideableEnsembles
+  Fiat.Common.List.ListFacts
+  Fiat.Common.BoolFacts
+  Fiat.Common.LogicFacts
+  Fiat.Common.List.FlattenList
+  Fiat.Common.Ensembles.IndexedEnsembles
+  Fiat.Common.IterateBoundedIndex
+  Fiat.Common.Tactics.CacheStringConstant
+  Fiat.Common.BoundedLookup
+  Fiat.Common.ilist.
+Require Import
+  Fiat.ADT.ComputationalADT
+  Fiat.ADT.ADTSig
+  Fiat.ADT.Core.
+Require Import
+  Fiat.ADTNotation.BuildComputationalADT
+  Fiat.ADTNotation.BuildADTSig
+  Fiat.ADTNotation.BuildADT
+  Fiat.ADTNotation.BuildADTReplaceMethods.
+Require Import
+  Fiat.ADTRefinement.GeneralBuildADTRefinements
+  Fiat.ADTRefinement.Core
+  Fiat.ADTRefinement.GeneralRefinements.
+Require Import Fiat.ADTRefinement.BuildADTRefinements.HoneRepresentation.
+Require Import Fiat.Computation.Refinements.Tactics.
+
+(***************************************************************)
+(* Originally defined in Tutorial.v                            *)
+(***************************************************************)
+(* Moved from there because it imports and defines too many things that
+   are not necessary for this case study *)
 
 Ltac pick := erewrite refine_pick_val by eauto.
 Ltac pick_by H := erewrite refine_pick_val by (eapply H; eauto).
 
 Hint Resolve refine_pick_val.
 Hint Rewrite <- app_nil_end.
-
-Require Import Computation.Refinements.Tactics.
 
 Lemma refineR_pick_val A R `{Reflexive A R} a (P : A -> Prop)
   : P a -> @refineR A A R ({x | P x })%comp
@@ -45,24 +58,6 @@ Proof.
 Qed.
 
 Ltac pick_byR H := erewrite refineR_pick_val by (eapply H; eauto).
-
-
-
-Require Import Coq.Logic.Eqdep_dec
-        Fiat.ADT.ComputationalADT
-        Fiat.ADTNotation.BuildComputationalADT.
-Require Import         Fiat.Common Fiat.Computation Fiat.ADT.ADTSig Fiat.ADT.Core
-        Fiat.ADT.ComputationalADT
-        Fiat.Common.BoundedLookup
-        Fiat.Common.ilist
-        Fiat.Common.IterateBoundedIndex
-        Fiat.ADTNotation.BuildADTSig Fiat.ADTNotation.BuildADT
-        Fiat.ADTNotation.BuildComputationalADT
-        Fiat.ADTNotation.BuildADTReplaceMethods
-        Fiat.ADTRefinement.Core
-        Fiat.ADTRefinement.GeneralRefinements.
-Require Export Fiat.Common.Coq__8_4__8_5__Compat.
-
 
 Definition testnil A B (ls : list A) (cnil ccons : B) : B :=
   match ls with
@@ -142,14 +137,14 @@ Ltac done := try match goal with
                  | [ |- refineEq ?a ?b ] => is_evar b; instantiate (1 := a)
                  | [ |- refineR ?R ?a ?b ] => is_evar b; instantiate (1 := a)
                  end; finish honing.
+
+(***************************************************************)
+(* End of Tutorial.v                                           *)
+(***************************************************************)
+
 Section data.
   Variable data : Set.
   Hypothesis (Hdata_not_impl : forall d : data, d ⊑ ? data).
-
-  (* TODO: Change. Should consider ? *)
-  (* Instance : Refinable data := mkEqRefinable data. *)
-  (* Instance : Complete data := mkCompleteTrue data. *)
-  (* Instance : Ground data := mkGroundTrue data. *)
 
   (* Here we parameterize over an arbitrary type of data stored within stacks. *)
   Variable dummy : data.
@@ -165,8 +160,6 @@ Section data.
   (* Notice that "effectful" methods just return new private-state values,
    * in addition to being passed original state values as parameters. *)
 
-
-  (* Open Scope ADT. *)
   Open Scope ADTParsing.
   Open Scope methDefParsing.
 
@@ -193,22 +186,6 @@ Section data.
   Definition rel (naive : list data) (opt : list data * list data) :=
       naive = fst opt ++ rev (snd opt).
 
-
-  Instance IncRefRel : forall naive, IncRef (rel naive) .
-    unfold rel.
-    intros naive.
-    eapply IncRefEqR.
-    unfold_complete.
-    - intros. apply is_complete_app.
-      apply is_complete_fst; auto.
-      apply is_complete_rev. apply is_complete_snd; auto.
-    - unfold is_monotone; intros. apply app_ref.
-      + eapply fst_ref; eauto. constructor.
-      + apply rev_ref; eauto.
-        apply snd_ref; eauto.
-        constructor.
-  Defined.
-
   Definition rel_mono (naive : list data) (opt : list data * list data) :=
     (ir_mono (rel naive)) opt.
 
@@ -222,10 +199,10 @@ Section data.
     reflexivity.
   Qed.
 
-  Lemma rel_implies_mono : forall abs conc,
-      rel abs conc -> rel_mono abs conc.
+  Lemma rel_implies_mono : forall naive opt,
+      rel naive opt -> rel_mono naive opt.
   Proof.
-    intros abs conc. unfold rel. intros ->.
+    intros naive opt. unfold rel. intros ->.
     simpl. unfold rel_mono. simpl.
     apply list_data_refl.
   Qed.
@@ -351,13 +328,6 @@ Section data.
     induction (fst opt) using exc_list_ind; simpl in *; tauto.
   Qed.
 
-
-Require Import BuildADTRefinements.HoneRepresentation.
-
-
-Instance option_Reflexive {A} `{Reflexive A} `{Refinable A} : Reflexive (refinableOption.(@refinement (option A))).
-typeclasses eauto.
-Qed.
 
 Instance refineProd_Reflexive A B RCods `{forall A, Reflexive (RCods A)} : Reflexive (@refineProd RCods A B).
 Proof.
