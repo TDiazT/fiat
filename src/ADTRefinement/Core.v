@@ -94,7 +94,6 @@ Section MethodRefinement.
   Definition refineProd {A : refinableType} {X}
     := refineR  (fun (v : X * A) (v' : X * A) => fst v = fst v' /\ R (snd v) (snd v')).
 
-
   Fixpoint refineMethod'
            {dom : list Type}
            {cod : option refinableType}

@@ -360,15 +360,25 @@ typeclasses eauto.
 Qed.
 
 Instance refineProd_Reflexive A B RCods `{forall A, Reflexive (RCods A)} : Reflexive (@refineProd RCods A B).
-Admitted.
+Proof.
+  unfold refineProd, refineR.
+  econstructor. repeat split; eauto.
+  reflexivity.
+Qed.
 
 Instance refineProd_Transitive A B RCods `{forall A, Transitive (RCods A)} : Transitive (@refineProd RCods A B).
-intros ? ? ?.
-unfold refineProd.
-Admitted.
+Proof.
+  intros x y z.
+  unfold refineProd, refineR.
+  intros Hxy Hyz v'' Hzv''.
+  destruct (Hyz _ Hzv'') as [v' [Hyv' [Heq' HRv']]].
+  destruct (Hxy _ Hyv') as [v [Hxv [Heq HRv]]].
+  exists v. repeat split; eauto. rewrite Heq; eauto.
+  eapply H; eauto.
+Qed.
 
-
-  Definition SigRCods (A : refinableType) := (ARef A).(refinement).
+(* Relation to be used for the outputs of each method *)
+Definition SigRCods (A : refinableType) := (ARef A).(refinement).
 
   (* This could be proven in Refinement directly *)
   Instance sigRCodsPreOrder A : PreOrder (SigRCods A).
