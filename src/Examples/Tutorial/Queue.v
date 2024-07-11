@@ -1,36 +1,15 @@
 Require Import Fiat.Examples.Tutorial.RefinementInstances.
 
-Require Import
-  Coq.Strings.Ascii
-  Coq.Bool.Bool
-  Coq.Vectors.Vector
-  Coq.Bool.Bvector
-  Coq.Lists.List
-  Coq.Strings.String
-  Coq.Logic.Eqdep_dec.
+Require Import Coq.Lists.List.
 
 Import Lists.List.ListNotations.
 
-Require Export
-  Fiat.Common.DecideableEnsembles
-  Fiat.Common.List.ListFacts
-  Fiat.Common.BoolFacts
-  Fiat.Common.LogicFacts
-  Fiat.Common.List.FlattenList
-  Fiat.Common.Ensembles.IndexedEnsembles
-  Fiat.Common.IterateBoundedIndex
-  Fiat.Common.Tactics.CacheStringConstant
-  Fiat.Common.BoundedLookup
-  Fiat.Common.ilist.
+Require Export Fiat.Common.ilist.
+
+Require Import Fiat.ADT.Core.
 Require Import
-  Fiat.ADT.ComputationalADT
-  Fiat.ADT.ADTSig
-  Fiat.ADT.Core.
-Require Import
-  Fiat.ADTNotation.BuildComputationalADT
   Fiat.ADTNotation.BuildADTSig
-  Fiat.ADTNotation.BuildADT
-  Fiat.ADTNotation.BuildADTReplaceMethods.
+  Fiat.ADTNotation.BuildADT.
 Require Import
   Fiat.ADTRefinement.GeneralBuildADTRefinements
   Fiat.ADTRefinement.Core
@@ -329,23 +308,6 @@ Section data.
   Qed.
 
 
-Instance refineProd_Reflexive A B RCods `{forall A, Reflexive (RCods A)} : Reflexive (@refineProd RCods A B).
-Proof.
-  unfold refineProd, refineR.
-  econstructor. repeat split; eauto.
-  reflexivity.
-Qed.
-
-Instance refineProd_Transitive A B RCods `{forall A, Transitive (RCods A)} : Transitive (@refineProd RCods A B).
-Proof.
-  intros x y z.
-  unfold refineProd, refineR.
-  intros Hxy Hyz v'' Hzv''.
-  destruct (Hyz _ Hzv'') as [v' [Hyv' [Heq' HRv']]].
-  destruct (Hxy _ Hyv') as [v [Hxv [Heq HRv]]].
-  exists v. repeat split; eauto. rewrite Heq; eauto.
-  eapply H; eauto.
-Qed.
 
 (* Relation to be used for the outputs of each method *)
 Definition SigRCods (A : refinableType) := (ARef A).(refinement).

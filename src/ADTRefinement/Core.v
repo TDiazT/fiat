@@ -94,6 +94,7 @@ Section MethodRefinement.
   Definition refineProd {A : refinableType} {X}
     := refineR  (fun (v : X * A) (v' : X * A) => fst v = fst v' /\ R (snd v) (snd v')).
 
+
   Fixpoint refineMethod'
            {dom : list Type}
            {cod : option refinableType}
@@ -179,6 +180,25 @@ Section MethodRefinement.
       @refineMethod_eq' dom cod (oldMethod r_o) (newMethod r_o).
 
 End MethodRefinement.
+
+Instance refineProd_Reflexive A B RCods `{forall A, Reflexive (RCods A)} : Reflexive (@refineProd RCods A B).
+Proof.
+  unfold refineProd, refineR.
+  econstructor. repeat split; eauto.
+  reflexivity.
+Qed.
+
+Instance refineProd_Transitive A B RCods `{forall A, Transitive (RCods A)} : Transitive (@refineProd RCods A B).
+Proof.
+  intros x y z.
+  unfold refineProd, refineR.
+  intros Hxy Hyz v'' Hzv''.
+  destruct (Hyz _ Hzv'') as [v' [Hyv' [Heq' HRv']]].
+  destruct (Hxy _ Hyv') as [v [Hxv [Heq HRv]]].
+  exists v. repeat split; eauto. rewrite Heq; eauto.
+  eapply H; eauto.
+Qed.
+
 
 Record refineADT RCods {Sig} (A B : ADT Sig) :=
   refinesADT {
