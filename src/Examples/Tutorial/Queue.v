@@ -451,8 +451,6 @@ Definition SigRCods (A : refinableType) := (ARef A).(refinement).
           done.
         *
           refineEqOldSimpl.
-          (* rewrite H2 in Hc. simpl in Hc. *)
-
           refine_let (rev (snd r_n)).
           erewrite eta_naive_snd with (naive := r_o) by eauto.
           monad_simpl.
