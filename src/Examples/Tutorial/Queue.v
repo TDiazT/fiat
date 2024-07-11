@@ -1,125 +1,4 @@
-Require Import Fiat.Examples.Tutorial.RefinementInstances.
-
-Require Import Coq.Lists.List.
-
-Import Lists.List.ListNotations.
-
-Require Export Fiat.Common.ilist.
-
-Require Import Fiat.ADT.Core.
-Require Import
-  Fiat.ADTNotation.BuildADTSig
-  Fiat.ADTNotation.BuildADT.
-Require Import
-  Fiat.ADTRefinement.GeneralBuildADTRefinements
-  Fiat.ADTRefinement.Core
-  Fiat.ADTRefinement.GeneralRefinements.
-Require Import Fiat.ADTRefinement.BuildADTRefinements.HoneRepresentation.
-Require Import Fiat.Computation.Refinements.Tactics.
-
-(***************************************************************)
-(* Originally defined in Tutorial.v                            *)
-(***************************************************************)
-(* Moved from there because it imports and defines too many things that
-   are not necessary for this case study *)
-
-Ltac pick := erewrite refine_pick_val by eauto.
-Ltac pick_by H := erewrite refine_pick_val by (eapply H; eauto).
-
-Hint Resolve refine_pick_val.
-Hint Rewrite <- app_nil_end.
-
-Lemma refineR_pick_val A R `{Reflexive A R} a (P : A -> Prop)
-  : P a -> @refineR A A R ({x | P x })%comp
-            (ret a).
-Proof.
-    t_refine.
-Qed.
-
-Ltac pick_byR H := erewrite refineR_pick_val by (eapply H; eauto).
-
-Definition testnil A B (ls : list A) (cnil ccons : B) : B :=
-  match ls with
-  | nil => cnil
-  | _ :: _ => ccons
-  end.
-
-
-Lemma refine_testnil : forall A `{Complete A} (ls : list A) B R (c1 cnil ccons : Comp B),
-    is_complete ls ->
-    (ls = nil -> refineR R c1 cnil)
-    -> (ls <> nil -> refineR R c1 ccons)
-    -> refineR R c1 (testnil ls cnil ccons).
-Proof with eauto with icp.
-  intros ? ? ls.
-  induction ls using exc_list_ind; try intuition congruence.
-  intros ? ? ? ? ? Hcontra.
-  inversion Hcontra...
-Qed.
-
-Add Parametric Morphism A B
-: (@testnil A (Comp B))
-    with signature
-    @eq (list A)
-      ==> @refineEq B
-      ==> @refineEq B
-      ==> @refineEq B
-      as refine_testnil_morphism.
-Proof.
-  destruct y; auto.
-Qed.
-
-Lemma refine_testnil_ret : forall A B (ls : list A) (cnil ccons : B),
-  refineEq (testnil ls (ret cnil) (ret ccons)) (ret (testnil ls cnil ccons)).
-Proof.
-  destruct ls; reflexivity.
-Qed.
-
-Ltac refine_testnil ls' := etransitivity; [ eapply refine_testnil with (ls := ls'); eauto; intro | ].
-
-Definition let_ A B (v : A) (f : A -> B) := let x := v in f v.
-
-Add Parametric Morphism A B
-: (@let_ A (Comp B))
-    with signature
-    @eq A
-      ==> pointwise_relation _ (@refineEq B)
-      ==> @refineEq B
-      as refine_let_morphism.
-Proof.
-  unfold pointwise_relation, let_; auto.
-Qed.
-
-Lemma refine_let : forall A B (v : A) c1 (c2 : A -> Comp B),
-  (forall x, x = v -> refineEq c1 (c2 x))
-  -> refineEq c1 (let_ v c2).
-Proof.
-  unfold let_; auto.
-Qed.
-
-Ltac refine_let x := apply (refine_let (v := x)); intros.
-
-Lemma refine_let_ret : forall A B (v : A) (f : A -> B),
-  let_ v (fun x => ret (f x)) =  ret (let_ v f).
-Proof.
-  reflexivity.
-Qed.
-
-Ltac monad_simpl := autosetoid_rewrite with refine_monad;
-                   try simplify_with_applied_monad_laws; simpl.
-
-Hint Rewrite refine_let_ret refine_testnil_ret : cleanup.
-
-Global Opaque let_.
-
-Ltac done := try match goal with
-                 | [ |- refineEq ?a ?b ] => is_evar b; instantiate (1 := a)
-                 | [ |- refineR ?R ?a ?b ] => is_evar b; instantiate (1 := a)
-                 end; finish honing.
-
-(***************************************************************)
-(* End of Tutorial.v                                           *)
-(***************************************************************)
+Require Import Tutorial.
 
 Section data.
   Variable data : Set.
@@ -308,14 +187,8 @@ Section data.
   Qed.
 
 
-
-(* Relation to be used for the outputs of each method *)
-Definition SigRCods (A : refinableType) := (ARef A).(refinement).
-
-  (* This could be proven in Refinement directly *)
-  Instance sigRCodsPreOrder A : PreOrder (SigRCods A).
-  econstructor; typeclasses eauto.
-  Qed.
+  (* Relation to be used for the outputs of each method *)
+  Definition SigRCods (A : refinableType) := (ARef A).(refinement).
 
   Instance sigRCodsReflexive A : Reflexive (SigRCods A).
    typeclasses eauto.
@@ -329,24 +202,6 @@ Definition SigRCods (A : refinableType) := (ARef A).(refinement).
   typeclasses eauto.
   Qed.
 
-  Ltac refineEqOldSimpl := eapply refineEquiv_refine_proper; monad_simpl.
-
-  Lemma refineEquiv_refineProd_proper {X} {A : refinableType} RCods (c c' c'' : Comp (X * A))
-    : refineEq c' c ->
-      refineProd RCods  c c'' ->
-      refineProd RCods  c' c''.
-  Proof.
-    intros H1.
-    unfold refineProd.
-    refineEqOldSimpl; eauto.
-  Qed.
-
-  Ltac refineEqProdSimpl := eapply refineEquiv_refineProd_proper; monad_simpl.
-
-  Ltac cleanup := autorewrite with cleanup.
-  (* Ltac finalize := finish_SharpeningADT_WithoutDelegation. *)
-
-
   Lemma complete_list_cons :
     forall l,
       is_complete l ->
@@ -358,43 +213,6 @@ Definition SigRCods (A : refinableType) := (ARef A).(refinement).
 
   Hint Resolve complete_list_cons.
 
-
-  Ltac extract_delegate_free_impl :=
-    cbv beta; simpl;
-    match goal with
-      |- forall idx : Fin.t 0,
-        refineADT ?RCods
-          (ith inil idx)
-          (ComputationalADT.LiftcADT
-             (existT
-                (ComputationalADT.pcADT
-                   (delegateeSig _))
-                (?DelegateReps idx) (?DelegateSpecs idx))) =>
-        unify DelegateReps (fun idx : Fin.t 0 => False);
-        let P' := match type of DelegateSpecs with
-                  | forall idx, @?P' idx => P'
-                  end in
-        unify DelegateSpecs (fun idx : Fin.t 0 => Fin.case0 P' idx);
-        apply Fin.case0
-    end.
-
-  Ltac finish_SharpeningADT_WithoutDelegation :=
-    eapply FullySharpened_Finish;
-    [ typeclasses eauto
-    | typeclasses eauto
-    | FullySharpenEachMethod
-        (@Vector.nil ADTSig)
-        (@Vector.nil Type)
-        (ilist.inil (B := fun nadt => ADT (delegateeSig nadt)));
-      try simplify with monad laws; simpl; try refine pick eq; try simplify with monad laws;
-      try first [ simpl]
-      ; repeat first [
-            higher_order_reflexivity
-          ]
-    | extract_delegate_free_impl
-    | simpl; higher_order_reflexivityT ].
-
-  Ltac finalize := finish_SharpeningADT_WithoutDelegation.
 
   (* Now we start deriving an implementation, in a correct-by-construction way. *)
   Theorem implementation : FullySharpened SigRCods naive_implementation .
@@ -462,8 +280,8 @@ Definition SigRCods (A : refinableType) := (ARef A).(refinement).
 
     - finalize.
       + unfold refineMethod, refineMethod'. intros ? ? [] *.
-      monad_simpl. pick.
-      higher_order_reflexivity.
+        monad_simpl. pick.
+        higher_order_reflexivity.
 
       + unfold refineMethod, refineMethod'. intros ? ? [].
         refineEqProdSimpl. pick. monad_simpl. done.
@@ -475,6 +293,10 @@ Definition SigRCods (A : refinableType) := (ARef A).(refinement).
   Definition impl := Eval simpl in projT1 implementation.
   Print impl.
 
+
+  (*******************************************)
+  (*             OLD FILE CONTENT            *)
+  (*******************************************)
   (* Let's try that again, with more automation. *)
 (*   Hint Resolve rel_initial rel_push rel_must_be_nil rel_reversed_rep rel_fast_rep. *)
 

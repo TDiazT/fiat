@@ -953,26 +953,43 @@ Ltac Implement_If_Opt_Then_Else :=
 
 Ltac finish_SharpeningADT_WithoutDelegation :=
   eapply FullySharpened_Finish;
-  [ FullySharpenEachMethod
+  [ typeclasses eauto
+  | typeclasses eauto
+  | FullySharpenEachMethod
       (@Vector.nil ADTSig)
       (@Vector.nil Type)
       (ilist.inil (B := fun nadt => ADT (delegateeSig nadt)));
     try simplify with monad laws; simpl; try refine pick eq; try simplify with monad laws;
-    try first [ simpl];
-    (* Guard setoid rewriting with [refine_if_If] to only occur when there's *)
-(*     actually an [if] statement in the goal.  This prevents [setoid_rewrite] from *)
-(*     uselessly descending into folded definitions. *)
-    repeat lazymatch goal with
-             | [ |- context [ if _ then _ else _ ] ] =>
-               setoid_rewrite refine_if_If at 1
-           end;
-    repeat first [
-             higher_order_reflexivity
-           | simplify with monad laws
-           | Implement_If_Then_Else
-           | Implement_If_Opt_Then_Else ]
+    try first [ simpl]
+    ; repeat first [
+          higher_order_reflexivity
+        ]
   | extract_delegate_free_impl
   | simpl; higher_order_reflexivityT ].
+
+(* OLD EXISTING *)
+(* Ltac finish_SharpeningADT_WithoutDelegation := *)
+(*   eapply FullySharpened_Finish; *)
+(*   [ FullySharpenEachMethod *)
+(*       (@Vector.nil ADTSig) *)
+(*       (@Vector.nil Type) *)
+(*       (ilist.inil (B := fun nadt => ADT (delegateeSig nadt))); *)
+(*     try simplify with monad laws; simpl; try refine pick eq; try simplify with monad laws; *)
+(*     try first [ simpl]; *)
+(*     (* Guard setoid rewriting with [refine_if_If] to only occur when there's *) *)
+(* (*     actually an [if] statement in the goal.  This prevents [setoid_rewrite] from *) *)
+(* (*     uselessly descending into folded definitions. *) *)
+(*     repeat lazymatch goal with *)
+(*              | [ |- context [ if _ then _ else _ ] ] => *)
+(*                setoid_rewrite refine_if_If at 1 *)
+(*            end; *)
+(*     repeat first [ *)
+(*              higher_order_reflexivity *)
+(*            | simplify with monad laws *)
+(*            | Implement_If_Then_Else *)
+(*            | Implement_If_Opt_Then_Else ] *)
+(*   | extract_delegate_free_impl *)
+(*   | simpl; higher_order_reflexivityT ]. *)
 
 (* Lemma refineIfret {A} : *)
 (*   forall (cond : bool) (a a' : A), *)
