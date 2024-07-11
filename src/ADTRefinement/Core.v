@@ -94,11 +94,6 @@ Section MethodRefinement.
   Definition refineProd {A : refinableType} {X}
     := refineR  (fun (v : X * A) (v' : X * A) => fst v = fst v' /\ R (snd v) (snd v')).
 
-  (* Definition RCod (cod : option Type) : Type := *)
-  (*   match cod with *)
-  (*   | Some cod' =>  cod' ->  cod' -> Prop *)
-  (*   | _ =>  unit *)
-  (*   end. *)
 
   Fixpoint refineMethod'
            {dom : list Type}

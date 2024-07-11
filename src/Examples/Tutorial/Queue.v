@@ -359,20 +359,6 @@ Instance option_Reflexive {A} `{Reflexive A} `{Refinable A} : Reflexive (refinab
 typeclasses eauto.
 Qed.
 
-
-Instance refineR_Reflexive A (R : A -> A -> Prop) `{Reflexive A R} : Reflexive (refineR R ).
-(* t. *)
-(* Qed. *)
-Admitted.
-
-Instance refineR_Transitive A (R : relation A) `{Transitive A R} : Transitive (refineR R).
-unfold refineR. intros ? ? ? Hyx Hzy.
-intros v Hz.
-destruct (Hzy _ Hz) as [v' [Hy ?]].
-destruct (Hyx _ Hy) as [v'' [? ?]].
-exists v''; eauto.
-Qed.
-
 Instance refineProd_Reflexive A B RCods `{forall A, Reflexive (RCods A)} : Reflexive (@refineProd RCods A B).
 Admitted.
 
@@ -465,7 +451,7 @@ Admitted.
     (* Dequeue *)
     - pose (Habs := H0); clearbody Habs.
       destruct H0 as [Hc Heq].
-      rewrite Heq in Hc.
+      (* rewrite <- Heq in Hc. *)
       apply is_complete_app_l in Hc. destruct Hc.
 
       refine_testnil (fst r_n).
@@ -485,7 +471,7 @@ Admitted.
           (* rewrite H2 in Hc. simpl in Hc. *)
 
           refine_let (rev (snd r_n)).
-          erewrite eta_abs_snd with (abs := r_o) by eauto.
+          erewrite eta_naive_snd with (naive := r_o) by eauto.
           monad_simpl.
           pick_by rel_reversed_rep.
           monad_simpl.
@@ -498,44 +484,18 @@ Admitted.
 
 
       +
-        erewrite eta_abs_fst with (abs := r_o) by eauto.
+        erewrite eta_naive_fst with (naive := r_o) by eauto.
         monad_simpl.
         refineEqOldSimpl.
         pick_by rel_fast_rep.
         monad_simpl.
-        erewrite rel_fast_data with (abs := r_o) by eauto.
+        erewrite rel_fast_data with (naive := r_o) by eauto.
         done.
         done.
       + refineEqOldSimpl.
         cleanup.
         done.
         done.
-
-
-    (* - *)
-    (*   Unshelve. 2: { repeat unshelve econstructor; simpl. exact (list data * list data)%type. *)
-    (*                  - depelim idx; simpl. exact (nil, nil). inversion idx. *)
-    (*                  - depelim idx. simpl. exact (fun r _ => (fst r, ?)). *)
-    (*                    depelim idx; simpl; try inversion idx. *)
-    (*                    exact (fun r => (nil, nil, None)). *)
-    (*                } *)
-    (*   unshelve econstructor. simpl. exact eq. *)
-    (*   exact eq. *)
-    (*   + cbn. simpl. depelim idx; simpl; try inversion idx. *)
-    (*     * monad_simpl. pick. cleanup. *)
-    (*       unfold refineEq. cbn. intros. *)
-
-    (*       done. *)
-
-
-
-    (*                            simpl. unfold refineEq. simpl. simpl. *)
-
-    (*   Unshelve. *)
-    (*   unfold refineADT. *)
-    (*   econstructor. *)
-
-
 
       (**********)
       (* Copying tactic directly *)

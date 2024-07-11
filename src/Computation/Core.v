@@ -160,10 +160,19 @@ Local Ltac t := repeat first [ solve [ unfold computes_to in *; eauto ]
                                         | split
                                         | progress split_and ].
 
+#[global]
 Instance refineR_Reflexive A (R : A -> A -> Prop) `{Reflexive A R} : Reflexive (refineR R ).
-(* t. *)
-(* Qed. *)
-Admitted.
+t.
+Qed.
+
+#[global]
+Instance refineR_Transitive A (R : relation A) `{Transitive A R} : Transitive (refineR R).
+unfold refineR. intros ? ? ? Hyx Hzy.
+intros v Hz.
+destruct (Hzy _ Hz) as [v' [Hy ?]].
+destruct (Hyx _ Hy) as [v'' [? ?]].
+exists v''; eauto.
+Qed.
 
 Global Instance refineEq_PreOrder A : PreOrder (@refineEq A) | 1.
 t.
