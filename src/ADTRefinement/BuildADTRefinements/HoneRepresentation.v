@@ -249,6 +249,7 @@ Abort.
      spawn off subgoals for each operation in one fell-swoop. *)
   Lemma refineADT_BuildADT_Rep_refine_All
         RCods
+        {HRCodsRefl : forall A, Reflexive (RCods A)}
         {n n'}
         (consSigs : Vector.t consSig n)
         (methSigs : Vector.t methSig n')

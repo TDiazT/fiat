@@ -180,12 +180,10 @@ Section MethodRefinement.
 
 End MethodRefinement.
 
-Record refineADT RCods {Sig} (A B : ADT Sig) :=
+Record refineADT RCods {HRCodsRefl : forall A, Reflexive (RCods A)} {Sig} (A B : ADT Sig) :=
   refinesADT {
       AbsR_mono : _;
       AbsR_anti : _;
-      (* RCods : _; *)
-      (* RCods_Trans : forall A, Transitive (RCods A) ; *)
       ADTRefinementPreservesConstructors
       : forall idx : ConstructorIndex Sig,
           @refineConstructor

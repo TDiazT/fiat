@@ -13,30 +13,6 @@ Proof.
   - intro; simpl; intros; subst; apply IHDom.
 Qed.
 
-(* Definition RCodReflexive (cod : option Type) (R : RCod cod) := *)
-(*   match cod as c return RCod c -> Type with *)
-(*   | Some _ => fun R => Reflexive R *)
-(*   | _ => fun _  => unit *)
-(*   end R. *)
-
-(* Definition RCodTransitive (cod : option Type) (R : RCod cod) := *)
-(*   match cod as c return RCod c -> Type with *)
-(*   | Some _ => fun R => Transitive R *)
-(*   | _ => fun _  => unit *)
-(*   end R. *)
-
-(* Definition RCodPreOrderT (cod : option Type) (R : RCod cod) := *)
-(*   match cod as c return RCod c -> Type with *)
-(*   | Some _ => fun R => PreOrderT R *)
-(*   | _ => fun _  => unit *)
-(*   end R. *)
-
-(* Definition RCodRel (cod : option Type) (R : RCod cod) := *)
-(*   match cod as c return RCod c -> (RCod c -> Prop) -> Type with *)
-(*   | Some _ => fun R P => P R *)
-(*   | _ => fun _ _ => unit *)
-(*   end R. *)
-
 #[global]
   Instance refineMethod_refl rep Dom Cod RCods
   {HR : forall A, Reflexive (RCods A) }
@@ -189,13 +165,19 @@ Proof.
 (* Qed. *)
 Admitted.
 
-Global Instance refineADT_PreOrder RCods (RCodsTrans : forall A, PreOrder (RCods A)) Sig : PreOrderT (refineADT RCods (Sig := Sig)).
+Global Instance refineADT_PreOrder RCods
+  {HRCodsRefl : forall A, Reflexive (RCods A)}
+  {HRCodsTrans : forall A, Transitive (RCods A)}
+  (* {HRCodsPreOrder : forall A, PreOrder (RCods A)} *)
+  Sig : PreOrderT (refineADT RCods (Sig := Sig)).
 Proof.
   split; compute in *.
   - intro x; destruct x.
     econstructor 1 with
-      (AbsR_mono := @eq Rep);
+      (AbsR_mono := @eq Rep)
+      (AbsR_anti := @eq Rep);
       try reflexivity.
+    intros; apply refineMethod_refl; eauto.
   - intros x y z H H'.
     destruct H as [AbsR_mono AbsR_anti].
     destruct H' as [AbsR_mono' AbsR_anti'].
@@ -207,7 +189,6 @@ Proof.
     + eauto using refineConstructor_trans.
     +
       eapply refineMethod_trans; eauto.
-      intros. apply PreOrder_Transitive.
 Qed.
 
 
@@ -252,6 +233,7 @@ Lemma refineADT_Build_ADT_Rep Sig oldRep newRep
       (AbsR_mono : oldRep -> newRep -> Prop)
       (AbsR_anti : oldRep -> newRep -> Prop)
       RCods
+      {HRCodsRefl : forall A, Reflexive (RCods A)}
 :
   (@respectful_heteroT
      (forall idx, constructorType oldRep (ConstructorDom Sig idx))
@@ -289,7 +271,7 @@ Proof.
   unfold Proper, respectful_heteroT; intros.
   let A := match goal with |- refineADT ?RCods ?A ?B => constr:(A) end in
   let B := match goal with |- refineADT ?RCods ?A ?B => constr:(B) end in
-  eapply (@refinesADT RCods Sig A B AbsR_mono);
+  eapply (@refinesADT RCods HRCodsRefl Sig A B AbsR_mono);
     unfold id, pointwise_relation in *; simpl in *; intros; eauto.
 Qed.
 
@@ -299,7 +281,7 @@ Qed.
 
 (** Refining Methods is a valid ADT refinement. *)
 
-Lemma refineADT_Build_ADT_Method rep RCods Sig cs
+Lemma refineADT_Build_ADT_Method rep RCods {HRCodsRefl : forall A, Reflexive (RCods A)} Sig cs
 : forall ms ms',
     (forall idx, @refineMethod _ _ eq eq RCods
                                  (fst (MethodDomCod Sig idx))
@@ -328,7 +310,7 @@ Qed.
     refinement steps are better, so using the previous refinements
     should be the preferred mode. ]*)
 
-Lemma refineADT_Build_ADT_Both rep RCods Sig
+Lemma refineADT_Build_ADT_Both rep RCods {HRCodsRefl : forall A, Reflexive (RCods A)} Sig
 : forall ms ms',
     (forall idx, @refineMethod _ _ eq eq RCods
                                  (fst (MethodDomCod Sig idx))
