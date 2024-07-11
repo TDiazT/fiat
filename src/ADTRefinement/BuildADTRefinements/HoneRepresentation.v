@@ -425,9 +425,13 @@ Arguments DecADTSig : simpl never.
 (* Honing tactic for refining the representation type and spawning new subgoals for
  each of the operations. *)
 
+
 Tactic Notation "hone" "representation" "using" open_constr(AbsR_mono') "and" open_constr(AbsR_anti') :=
   eapply SharpenStep;
-  [try typeclasses eauto |eapply refineADT_BuildADT_Rep_refine_All with (AbsR_mono := AbsR_mono') (AbsR_anti := AbsR_anti');
+  [
+    typeclasses eauto
+  | typeclasses eauto
+  | eapply refineADT_BuildADT_Rep_refine_All with (AbsR_mono := AbsR_mono') (AbsR_anti := AbsR_anti');
     [ repeat (first [eapply refine_Constructors_nil
                     | eapply refine_Constructors_cons;
                       [ intros; simpl; intros;

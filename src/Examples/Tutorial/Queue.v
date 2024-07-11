@@ -397,48 +397,44 @@ Definition SigRCods (A : refinableType) := (ARef A).(refinement).
   Hint Resolve complete_list_cons.
 
 
+  Ltac extract_delegate_free_impl :=
+    cbv beta; simpl;
+    match goal with
+      |- forall idx : Fin.t 0,
+        refineADT ?RCods
+          (ith inil idx)
+          (ComputationalADT.LiftcADT
+             (existT
+                (ComputationalADT.pcADT
+                   (delegateeSig _))
+                (?DelegateReps idx) (?DelegateSpecs idx))) =>
+        unify DelegateReps (fun idx : Fin.t 0 => False);
+        let P' := match type of DelegateSpecs with
+                  | forall idx, @?P' idx => P'
+                  end in
+        unify DelegateSpecs (fun idx : Fin.t 0 => Fin.case0 P' idx);
+        apply Fin.case0
+    end.
+
+  Ltac finish_SharpeningADT_WithoutDelegation :=
+    eapply FullySharpened_Finish;
+    [ typeclasses eauto
+    | typeclasses eauto
+    | FullySharpenEachMethod
+        (@Vector.nil ADTSig)
+        (@Vector.nil Type)
+        (ilist.inil (B := fun nadt => ADT (delegateeSig nadt)));
+      try simplify with monad laws; simpl; try refine pick eq; try simplify with monad laws;
+      try first [ simpl]
+      ; repeat first [
+            higher_order_reflexivity
+          ]
+    | extract_delegate_free_impl
+    | simpl; higher_order_reflexivityT ].
 
   Ltac finalize := finish_SharpeningADT_WithoutDelegation.
+
   (* Now we start deriving an implementation, in a correct-by-construction way. *)
-
-Tactic Notation "hone" "representation" "using" open_constr(AbsR_mono') "and" open_constr(AbsR_anti') :=
-  eapply SharpenStep;
-  [
-    typeclasses eauto
-  | typeclasses eauto
-  | eapply refineADT_BuildADT_Rep_refine_All with (AbsR_mono := AbsR_mono') (AbsR_anti := AbsR_anti');
-    [ repeat (first [eapply refine_Constructors_nil
-                    | eapply refine_Constructors_cons;
-                      [ intros; simpl; intros;
-                        match goal with
-                        |  |- refine _ (?E _ _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
-                        |  |- refine _ (?E _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
-                        |  |- refine _ (?E _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
-                        |  |- refine _ (?E _ _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
-                        |  |- refine _ (?E _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
-                        |  |- refine _ (?E _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
-                        |  |- refine _ (?E _ _) => is_evar E; let H := fresh in fast_set (H := E)
-                        |  |- refine _ (?E _) => is_evar E; let H := fresh in fast_set (H := E)
-                        |  |- refine _ (?E) => is_evar E; let H := fresh in fast_set (H := E)
-                        | _ => idtac
-                        end | ] ])
-    | repeat (first [eapply refine_Methods_nil
-                    | eapply refine_Methods_cons;
-                      [ intros; simpl; unfold refineMethod, refineMethod'; intros;
-                        match goal with
-                        |  |- refine _ _ (?E _ _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
-                        |  |- refine _ _ (?E _ _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
-                        |  |- refine _ _ (?E _ _ _ _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
-                        |  |- refine _ _ (?E _ _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
-                        |  |- refine _ _ (?E _ _ _ _ ) => is_evar E; let H := fresh in fast_set (H := E)
-                        |  |- refine _ _ (?E _ _ _) => is_evar E; let H := fresh in fast_set (H := E)
-                        |  |- refine _ _ (?E _ _) => is_evar E; let H := fresh in fast_set (H := E)
-                        |  |- refine _ _ (?E _) => is_evar E; let H := fresh in fast_set (H := E)
-                          | _ => idtac
-                        end | ]
-                    ])]
-  | ].
-
   Theorem implementation : FullySharpened SigRCods naive_implementation .
   Proof.
     start sharpening ADT.
@@ -502,108 +498,12 @@ Tactic Notation "hone" "representation" "using" open_constr(AbsR_mono') "and" op
         done.
         done.
 
-      (**********)
-      (* Copying tactic directly *)
-      (**********)
-
-        Ltac extract_delegate_free_impl :=
-          cbv beta; simpl;
-          match goal with
-            |- forall (idx : Fin.t 0),
-              refineADT SigRCods
-                (ith inil idx)
-                (ComputationalADT.LiftcADT
-                   (existT
-                      (ComputationalADT.pcADT
-                         (delegateeSig _))
-                      (?DelegateReps idx) (?DelegateSpecs idx))) =>
-              unify DelegateReps (fun idx : Fin.t 0 => False);
-              let P' := match type of DelegateSpecs with
-                        | forall idx, @?P' idx => P'
-                        end in
-              unify DelegateSpecs (fun idx : Fin.t 0 => Fin.case0 P' idx);
-              apply Fin.case0
-          end.
-
-Ltac FullySharpenEachMethod DelegateSigs DelegateReps delegateSpecs :=
-    let Delegatees := constr:(Build_NamedDelegatees DelegateSigs DelegateReps) in
-    let DelegateSpecs := constr:(ith delegateSpecs) in
-    let NumDelegates := match type of DelegateSigs with
-                        | Vector.t _ ?n => n
-                        end in
-    match goal with
-      |- FullySharpenedUnderDelegates ?RCods (@BuildADT ?Rep ?n ?n' ?consSigs ?methSigs ?consDefs ?methDefs) _ =>
-        (* idtac "ok" end. *)
-      ilist_of_evar_dep n
-        (Fin.t NumDelegates -> Type)
-        (fun D =>
-           forall idx,
-             ComputationalADT.pcADT (delegateeSig (Vector.nth Delegatees idx)) (D idx))
-        (fun Sig => ComputationalADT.cConstructorType Rep (consDom Sig))
-        consSigs
-        ltac:(fun cCons =>
-                ilist_of_evar_dep n'
-                                  (Fin.t NumDelegates -> Type)
-                                  (fun D =>
-                                     forall idx,
-             ComputationalADT.pcADT (delegateeSig (Vector.nth Delegatees idx)) (D idx))
-        (fun Sig => ComputationalADT.cMethodType Rep (methDom Sig) (methCod Sig))
-        methSigs
-        ltac:(fun cMeths =>
-                eapply (@Notation_Friendly_SharpenFully
-                          Rep NumDelegates n n'
-                          RCods
-                          consSigs methSigs
-                          consDefs methDefs
-                          DelegateSigs DelegateReps
-                          (fun _ => Rep)
-                          cCons cMeths
-                          delegateSpecs
-                          (fun
-                              (DelegateReps'' : Fin.t NumDelegates -> Type)
-                              (DelegateImpls'' : forall idx,
-                                  ComputationalADT.pcADT (delegateeSig (Vector.nth Delegatees idx)) (DelegateReps'' idx))
-                         (ValidImpls''
-                          : forall idx : Fin.t NumDelegates,
-                             refineADT RCods (DelegateSpecs idx)
-                                       (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls'' idx))))
-                            => @eq _)
-                          (* TODO: Delete this probably *)
-                          (fun
-                              (DelegateReps'' : Fin.t NumDelegates -> Type)
-                              (DelegateImpls'' : forall idx,
-                                  ComputationalADT.pcADT (delegateeSig (Vector.nth Delegatees idx)) (DelegateReps'' idx))
-                         (ValidImpls''
-                          : forall idx : Fin.t NumDelegates,
-                             refineADT RCods (DelegateSpecs idx)
-                                       (ComputationalADT.LiftcADT (existT _ _ (DelegateImpls'' idx))))
-                            => @eq _)
-             )))
-    end; try (simpl; repeat split; intros; subst).
-    - eapply FullySharpened_Finish;
-      [ typeclasses eauto
-      | typeclasses eauto
-      | FullySharpenEachMethod
-          (@Vector.nil ADTSig)
-          (@Vector.nil Type)
-          (ilist.inil (B := fun nadt => ADT (delegateeSig nadt)));
-        try simplify with monad laws; simpl; try refine pick eq; try simplify with monad laws;
-          try first [ simpl]
-          ; repeat first [
-              higher_order_reflexivity
-              ]
-
-        | extract_delegate_free_impl
-        (* | idtac *)
-        | simpl; higher_order_reflexivityT ].
-
-      + unfold refineMethod. intros ? ? []. unfold refineMethod'. intros.
-      monad_simpl.
-      unfold LiftcMethod, LiftcMethod'.
-      pick.
+    - finalize.
+      + unfold refineMethod, refineMethod'. intros ? ? [] *.
+      monad_simpl. pick.
       higher_order_reflexivity.
 
-      + unfold refineMethod. intros ? ? []. unfold refineMethod'.
+      + unfold refineMethod, refineMethod'. intros ? ? [].
         refineEqProdSimpl. pick. monad_simpl. done.
         higher_order_reflexivity.
 
@@ -614,249 +514,245 @@ Ltac FullySharpenEachMethod DelegateSigs DelegateReps delegateSpecs :=
   Print impl.
 
   (* Let's try that again, with more automation. *)
-  Hint Resolve rel_initial rel_push rel_must_be_nil rel_reversed_rep rel_fast_rep.
+(*   Hint Resolve rel_initial rel_push rel_must_be_nil rel_reversed_rep rel_fast_rep. *)
 
-  Theorem more_automated_implementation : FullySharpened spec.
-  Proof.
-    start sharpening ADT.
-    hone representation using rel.
+(*   Theorem more_automated_implementation : FullySharpened spec. *)
+(*   Proof. *)
+(*     start sharpening ADT. *)
+(*     hone representation using rel. *)
 
-    monad_simpl.
-    pick.
-    done.
+(*     monad_simpl. *)
+(*     pick. *)
+(*     done. *)
 
-    monad_simpl.
-    pick.
-    done.
+(*     monad_simpl. *)
+(*     pick. *)
+(*     done. *)
 
-    refine_testnil (fst r_n).
+(*     refine_testnil (fst r_n). *)
 
-    refine_testnil (snd r_n).
+(*     refine_testnil (snd r_n). *)
 
-    assert (r_o = nil) by eauto.
-    subst.
-    monad_simpl.
-    pick.
-    monad_simpl.
-    done.
+(*     assert (r_o = nil) by eauto. *)
+(*     subst. *)
+(*     monad_simpl. *)
+(*     pick. *)
+(*     monad_simpl. *)
+(*     done. *)
 
-    refine_let (rev (snd r_n)).
+(*     refine_let (rev (snd r_n)). *)
 
-    erewrite eta_abs_snd with (abs := r_o) by eauto.
-    monad_simpl.
-    pick.
-    monad_simpl.
-    erewrite rel_reversed_data by eauto.
-    done.
+(*     erewrite eta_abs_snd with (abs := r_o) by eauto. *)
+(*     monad_simpl. *)
+(*     pick. *)
+(*     monad_simpl. *)
+(*     erewrite rel_reversed_data by eauto. *)
+(*     done. *)
 
-    cbv beta.
-    done.
+(*     cbv beta. *)
+(*     done. *)
 
-    erewrite eta_abs_fst with (abs := r_o) by eauto.
-    monad_simpl.
-    pick.
-    monad_simpl.
-    erewrite rel_fast_data with (abs := r_o) by eauto.
-    done.
+(*     erewrite eta_abs_fst with (abs := r_o) by eauto. *)
+(*     monad_simpl. *)
+(*     pick. *)
+(*     monad_simpl. *)
+(*     erewrite rel_fast_data with (abs := r_o) by eauto. *)
+(*     done. *)
 
-    cleanup.
-    done.
+(*     cleanup. *)
+(*     done. *)
 
-    finalize.
-  Defined.
+(*     finalize. *)
+(*   Defined. *)
 
-  (* We can go further, building tactics to automate most of our strategy. *)
+(*   (* We can go further, building tactics to automate most of our strategy. *) *)
 
-  Ltac queue' :=
-    repeat match goal with
-           | _ => progress monad_simpl
-           | _ => pick
-           | [ H : rel ?abs _ |- _ ] =>
-             match abs with
-             | nil => fail 1
-             | _ => assert (abs = nil) by eauto; subst
-             end
-           | [ _ : rel ?abs_ ?conc |- context[match ?abs_ with nil => _ | _ :: _ => _ end] ] =>
-             (erewrite eta_abs_fst with (abs := abs_) by eauto)
-             || (erewrite eta_abs_snd with (abs := abs_) by eauto)
-           | [ |- context[hd dummy _] ] =>
-             (erewrite rel_reversed_data by eauto)
-             || (erewrite rel_fast_data by eauto)
-           end.
+(*   Ltac queue' := *)
+(*     repeat match goal with *)
+(*            | _ => progress monad_simpl *)
+(*            | _ => pick *)
+(*            | [ H : rel ?abs _ |- _ ] => *)
+(*              match abs with *)
+(*              | nil => fail 1 *)
+(*              | _ => assert (abs = nil) by eauto; subst *)
+(*              end *)
+(*            | [ _ : rel ?abs_ ?conc |- context[match ?abs_ with nil => _ | _ :: _ => _ end] ] => *)
+(*              (erewrite eta_abs_fst with (abs := abs_) by eauto) *)
+(*              || (erewrite eta_abs_snd with (abs := abs_) by eauto) *)
+(*            | [ |- context[hd dummy _] ] => *)
+(*              (erewrite rel_reversed_data by eauto) *)
+(*              || (erewrite rel_fast_data by eauto) *)
+(*            end. *)
 
-  Ltac queue := queue'; done.
+(*   Ltac queue := queue'; done. *)
 
-  Theorem even_more_automated_implementation : FullySharpened spec.
-  Proof.
-    start sharpening ADT.
-    hone representation using rel; try queue.
+(*   Theorem even_more_automated_implementation : FullySharpened spec. *)
+(*   Proof. *)
+(*     start sharpening ADT. *)
+(*     hone representation using rel; try queue. *)
 
-    refine_testnil (fst r_n); [
-      refine_testnil (snd r_n); [ queue |
-        refine_let (rev (snd r_n)); queue | queue ] | queue | ].
+(*     refine_testnil (fst r_n); [ *)
+(*       refine_testnil (snd r_n); [ queue | *)
+(*         refine_let (rev (snd r_n)); queue | queue ] | queue | ]. *)
 
-    cleanup; done.
+(*     cleanup; done. *)
 
-    finalize.
-  Defined.
+(*     finalize. *)
+(*   Defined. *)
 
 
-  (* OK, we just spent all that effort on automating the derivation.
-   * Ideally the same automation will keep working with different implementations.
-   * Let's try another (dumb, slow) one. *)
-  Definition dumbAbsRel (abs conc : list data) := conc = rev abs.
+(*   (* OK, we just spent all that effort on automating the derivation. *)
+(*    * Ideally the same automation will keep working with different implementations. *)
+(*    * Let's try another (dumb, slow) one. *) *)
+(*   Definition dumbAbsRel (abs conc : list data) := conc = rev abs. *)
 
-  Fixpoint getLast (ls : list data) : (list data * data) :=
-    match ls with
-    | nil => (nil, dummy)
-    | d :: nil => (nil, d)
-    | d :: ls' =>
-      let p := getLast ls' in
-      (d :: fst p, snd p)
-    end.
+(*   Fixpoint getLast (ls : list data) : (list data * data) := *)
+(*     match ls with *)
+(*     | nil => (nil, dummy) *)
+(*     | d :: nil => (nil, d) *)
+(*     | d :: ls' => *)
+(*       let p := getLast ls' in *)
+(*       (d :: fst p, snd p) *)
+(*     end. *)
 
-  Lemma dumbAbsRel_initial : dumbAbsRel nil nil.
-  Proof.
-    reflexivity.
-  Qed.
+(*   Lemma dumbAbsRel_initial : dumbAbsRel nil nil. *)
+(*   Proof. *)
+(*     reflexivity. *)
+(*   Qed. *)
 
-  Lemma dumbAbsRel_push : forall abs conc d,
-    dumbAbsRel abs conc
-    -> dumbAbsRel (abs ++ d :: nil) (d :: conc).
-  Proof.
-    unfold dumbAbsRel; simpl; intros.
-    rewrite rev_unit.
-    congruence.
-  Qed.
+(*   Lemma dumbAbsRel_push : forall abs conc d, *)
+(*     dumbAbsRel abs conc *)
+(*     -> dumbAbsRel (abs ++ d :: nil) (d :: conc). *)
+(*   Proof. *)
+(*     unfold dumbAbsRel; simpl; intros. *)
+(*     rewrite rev_unit. *)
+(*     congruence. *)
+(*   Qed. *)
 
-  Lemma dumbAbsRel_must_be_nil : forall abs conc,
-    dumbAbsRel abs conc
-    -> conc = nil
-    -> abs = nil.
-  Proof.
-    unfold dumbAbsRel; simpl; intros.
-    subst.
-    destruct abs; simpl in *; intuition.
-    exfalso; eauto.
-  Qed.
+(*   Lemma dumbAbsRel_must_be_nil : forall abs conc, *)
+(*     dumbAbsRel abs conc *)
+(*     -> conc = nil *)
+(*     -> abs = nil. *)
+(*   Proof. *)
+(*     unfold dumbAbsRel; simpl; intros. *)
+(*     subst. *)
+(*     destruct abs; simpl in *; intuition. *)
+(*     exfalso; eauto. *)
+(*   Qed. *)
 
-  Lemma dumbAbsRel_eta : forall abs conc,
-    dumbAbsRel abs conc
-    -> conc <> nil
-    -> abs = hd dummy abs :: tl abs.
-  Proof.
-    unfold dumbAbsRel; simpl; intros.
-    subst.
-    destruct abs; intuition.
-  Qed.
+(*   Lemma dumbAbsRel_eta : forall abs conc, *)
+(*     dumbAbsRel abs conc *)
+(*     -> conc <> nil *)
+(*     -> abs = hd dummy abs :: tl abs. *)
+(*   Proof. *)
+(*     unfold dumbAbsRel; simpl; intros. *)
+(*     subst. *)
+(*     destruct abs; intuition. *)
+(*   Qed. *)
 
-  Lemma getLast_append_list : forall ls d,
-    fst (getLast (ls ++ d :: nil)) = ls.
-  Proof.
-    induction ls; simpl; intuition.
-    destruct (ls ++ d :: nil) eqn:Heq.
-    exfalso; eauto.
-    rewrite <- Heq.
-    rewrite IHls.
-    auto.
-  Qed.
+(*   Lemma getLast_append_list : forall ls d, *)
+(*     fst (getLast (ls ++ d :: nil)) = ls. *)
+(*   Proof. *)
+(*     induction ls; simpl; intuition. *)
+(*     destruct (ls ++ d :: nil) eqn:Heq. *)
+(*     exfalso; eauto. *)
+(*     rewrite <- Heq. *)
+(*     rewrite IHls. *)
+(*     auto. *)
+(*   Qed. *)
 
-  Lemma dumbAbsRel_pop_rep : forall abs conc r,
-    dumbAbsRel abs conc
-    -> conc <> nil
-    -> r = getLast conc
-    -> dumbAbsRel (tl abs) (fst r).
-  Proof.
-    unfold dumbAbsRel; intros; subst.
-    destruct abs; simpl in *; intuition.
-    apply getLast_append_list.
-  Qed.
+(*   Lemma dumbAbsRel_pop_rep : forall abs conc r, *)
+(*     dumbAbsRel abs conc *)
+(*     -> conc <> nil *)
+(*     -> r = getLast conc *)
+(*     -> dumbAbsRel (tl abs) (fst r). *)
+(*   Proof. *)
+(*     unfold dumbAbsRel; intros; subst. *)
+(*     destruct abs; simpl in *; intuition. *)
+(*     apply getLast_append_list. *)
+(*   Qed. *)
 
-  Lemma getLast_append_data : forall ls d,
-    snd (getLast (ls ++ d :: nil)) = d.
-  Proof.
-    induction ls; auto.
+(*   Lemma getLast_append_data : forall ls d, *)
+(*     snd (getLast (ls ++ d :: nil)) = d. *)
+(*   Proof. *)
+(*     induction ls; auto. *)
 
-    intros.
-    simpl app.
-    unfold getLast.
-    fold getLast.
-    destruct (ls ++ d :: nil) eqn:Heq.
-    exfalso; eauto.
-    rewrite <- Heq.
-    rewrite IHls.
-    auto.
-  Qed.
+(*     intros. *)
+(*     simpl app. *)
+(*     unfold getLast. *)
+(*     fold getLast. *)
+(*     destruct (ls ++ d :: nil) eqn:Heq. *)
+(*     exfalso; eauto. *)
+(*     rewrite <- Heq. *)
+(*     rewrite IHls. *)
+(*     auto. *)
+(*   Qed. *)
 
-  Lemma dumbAbsRel_pop_data : forall abs conc r,
-    dumbAbsRel abs conc
-    -> conc <> nil
-    -> r = getLast conc
-    -> hd dummy abs = snd r.
-  Proof.
-    unfold dumbAbsRel; intros; subst.
-    destruct abs; simpl in *; intuition.
-    rewrite getLast_append_data; auto.
-  Qed.
+(*   Lemma dumbAbsRel_pop_data : forall abs conc r, *)
+(*     dumbAbsRel abs conc *)
+(*     -> conc <> nil *)
+(*     -> r = getLast conc *)
+(*     -> hd dummy abs = snd r. *)
+(*   Proof. *)
+(*     unfold dumbAbsRel; intros; subst. *)
+(*     destruct abs; simpl in *; intuition. *)
+(*     rewrite getLast_append_data; auto. *)
+(*   Qed. *)
 
-  Hint Resolve dumbAbsRel_initial dumbAbsRel_push dumbAbsRel_must_be_nil dumbAbsRel_pop_rep.
+(*   Hint Resolve dumbAbsRel_initial dumbAbsRel_push dumbAbsRel_must_be_nil dumbAbsRel_pop_rep. *)
 
-  (* Here's our first derivation, showing a bit more manual perspective. *)
-  Theorem dumb_implementation : FullySharpened spec.
-  Proof.
-    start sharpening ADT.
-    hone representation using dumbAbsRel; try queue.
+(*   (* Here's our first derivation, showing a bit more manual perspective. *) *)
+(*   Theorem dumb_implementation : FullySharpened spec. *)
+(*   Proof. *)
+(*     start sharpening ADT. *)
+(*     hone representation using dumbAbsRel; try queue. *)
 
-    refine_testnil r_n.
+(*     refine_testnil r_n. *)
 
-    assert (r_o = nil) by eauto.
-    subst.
-    queue.
+(*     assert (r_o = nil) by eauto. *)
+(*     subst. *)
+(*     queue. *)
 
-    refine_let (getLast r_n).
-    erewrite dumbAbsRel_eta with (abs := r_o) by eauto.
-    erewrite dumbAbsRel_pop_data by eauto.
-    queue.
+(*     refine_let (getLast r_n). *)
+(*     erewrite dumbAbsRel_eta with (abs := r_o) by eauto. *)
+(*     erewrite dumbAbsRel_pop_data by eauto. *)
+(*     queue. *)
 
-    cleanup.
-    done.
+(*     cleanup. *)
+(*     done. *)
 
-    finalize.
-  Defined.
+(*     finalize. *)
+(*   Defined. *)
 
-  (* We use a double colon to override the prior definition. *)
-  Ltac queue' ::=
-    repeat match goal with
-           | _ => progress monad_simpl
-           | _ => pick
-           | [ H : dumbAbsRel ?abs _ |- _ ] =>
-             match abs with
-             | nil => fail 1
-             | _ => assert (abs = nil) by eauto; subst
-             end
-           | [ _ : dumbAbsRel ?abs_ ?conc |- context[match ?abs_ with nil => _ | _ :: _ => _ end] ] =>
-             erewrite dumbAbsRel_eta with (abs := abs_) by eauto
-           | [ |- context[hd dummy _] ] =>
-             erewrite dumbAbsRel_pop_data by eauto
-           end.
+(*   (* We use a double colon to override the prior definition. *) *)
+(*   Ltac queue' ::= *)
+(*     repeat match goal with *)
+(*            | _ => progress monad_simpl *)
+(*            | _ => pick *)
+(*            | [ H : dumbAbsRel ?abs _ |- _ ] => *)
+(*              match abs with *)
+(*              | nil => fail 1 *)
+(*              | _ => assert (abs = nil) by eauto; subst *)
+(*              end *)
+(*            | [ _ : dumbAbsRel ?abs_ ?conc |- context[match ?abs_ with nil => _ | _ :: _ => _ end] ] => *)
+(*              erewrite dumbAbsRel_eta with (abs := abs_) by eauto *)
+(*            | [ |- context[hd dummy _] ] => *)
+(*              erewrite dumbAbsRel_pop_data by eauto *)
+(*            end. *)
 
-  (* Now let's automate it more. *)
-  Theorem more_automated_dumb_implementation : FullySharpened spec.
-  Proof.
-    start sharpening ADT.
-    hone representation using dumbAbsRel; try queue.
+(*   (* Now let's automate it more. *) *)
+(*   Theorem more_automated_dumb_implementation : FullySharpened spec. *)
+(*   Proof. *)
+(*     start sharpening ADT. *)
+(*     hone representation using dumbAbsRel; try queue. *)
 
-    refine_testnil r_n; [ queue |
-      refine_let (getLast r_n); queue | ].
+(*     refine_testnil r_n; [ queue | *)
+(*       refine_let (getLast r_n); queue | ]. *)
 
-    queue'.
-    cleanup.
-    done.
+(*     queue'. *)
+(*     cleanup. *)
+(*     done. *)
 
-    finalize.
-  Defined.
+(*     finalize. *)
+(*   Defined. *)
 End data.
-
-(* Local Variables: *)
-(* coq-prog-args: ("-emacs" "-native-compiler" "no" "-require" "Coq.Compat.AdmitAxiom" "-require-import" "Coq.Compat.AdmitAxiom" "-w" "unsupported-attributes" "-allow-rewrite-rules") *)
-(* End: *)

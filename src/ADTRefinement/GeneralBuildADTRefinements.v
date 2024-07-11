@@ -707,7 +707,7 @@ Ltac extract_delegate_free_impl :=
   cbv beta; simpl;
     match goal with
         |- forall idx : Fin.t 0,
-             refineADT
+             refineADT ?RCods
                (ith inil idx)
                (ComputationalADT.LiftcADT
                   (existT
@@ -868,7 +868,8 @@ Ltac FullySharpenEachMethod DelegateSigs DelegateReps delegateSpecs :=
                         | Vector.t _ ?n => n
                         end in
     match goal with
-      |- FullySharpenedUnderDelegates ?RCods ?RCodsRefl (@BuildADT ?Rep ?n ?n' ?consSigs ?methSigs ?consDefs ?methDefs) _ =>
+      |- FullySharpenedUnderDelegates ?RCods (@BuildADT ?Rep ?n ?n' ?consSigs ?methSigs ?consDefs ?methDefs) _ =>
+        (* idtac "ok" end. *)
       ilist_of_evar_dep n
         (Fin.t NumDelegates -> Type)
         (fun D =>
@@ -887,7 +888,7 @@ Ltac FullySharpenEachMethod DelegateSigs DelegateReps delegateSpecs :=
         ltac:(fun cMeths =>
                 eapply (@Notation_Friendly_SharpenFully
                           Rep NumDelegates n n'
-                          RCods RCodsRefl
+                          RCods
                           consSigs methSigs
                           consDefs methDefs
                           DelegateSigs DelegateReps
