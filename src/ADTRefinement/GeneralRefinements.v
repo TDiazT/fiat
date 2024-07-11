@@ -31,7 +31,7 @@ Require Import Coq.Lists.List
    knives), so I'm carrying on the naming convention with a
    'Sharpened' notation for the dependent products. *)
 
-Definition FullySharpened RCods {HRCodsRefl : forall A, Reflexive (RCods A)} {Sig} spec := {adt : cADT Sig & refineADT RCods spec (LiftcADT adt)}.
+Definition FullySharpened RCods {Sig} spec := {adt : cADT Sig & refineADT RCods spec (LiftcADT adt)}.
 
 Record NamedADTSig :=
   { ADTSigname : string;
@@ -51,7 +51,6 @@ Record SharpenedUnderDelegates (Sig : ADTSig)
 
 Definition FullySharpenedUnderDelegates
            RCods
-           (HRCodsRefl : forall A, Reflexive (RCods A))
            (Sig : ADTSig)
            (spec : ADT Sig)
            (adt : SharpenedUnderDelegates Sig)
@@ -73,11 +72,11 @@ Definition FullySharpenedUnderDelegates
 
 Notation Sharpened spec := (@refineADT _ _ _ spec _).
 
-Definition MostlySharpened RCods {HRCodsRefl : forall A, Reflexive (RCods A)} {Sig} spec :=
-  {adt : _ & prod (refineADT RCods spec (fst adt)) (@FullySharpenedUnderDelegates RCods HRCodsRefl Sig (fst adt) (snd adt))}.
+Definition MostlySharpened RCods {Sig} spec :=
+  {adt : _ & prod (refineADT RCods spec (fst adt)) (@FullySharpenedUnderDelegates RCods Sig (fst adt) (snd adt))}.
 
 Lemma FullySharpened_Start
-  : forall RCods {HRCodsRefl : forall A, Reflexive (RCods A)} {Sig} (spec : ADT Sig) cadt,
+  : forall RCods {Sig} (spec : ADT Sig) cadt,
     refineADT RCods spec (LiftcADT cadt)
     -> FullySharpened RCods spec.
 Proof.
@@ -92,7 +91,7 @@ Lemma FullySharpened_Finish
       (spec : ADT Sig) adt
       (cadt : ComputationalADT.cADT Sig)
       ,
-    @FullySharpenedUnderDelegates RCods _ _ spec adt
+    @FullySharpenedUnderDelegates RCods _ spec adt
     -> forall (DelegateReps : Fin.t (Sharpened_DelegateIDs adt) -> Type)
               (DelegateImpls :
                  forall idx,
@@ -111,9 +110,9 @@ Proof.
 Qed.
 
 Lemma MostlySharpened_Start
-  : forall RCods {HRCodsRefl : forall A, Reflexive (RCods A)} {Sig} (spec : ADT Sig) adt cadt,
-    (@refineADT RCods _ _ spec adt)
-    -> (@FullySharpenedUnderDelegates RCods _ _ adt cadt)
+  : forall RCods {Sig} (spec : ADT Sig) adt cadt,
+    (@refineADT RCods _ spec adt)
+    -> (@FullySharpenedUnderDelegates RCods _ adt cadt)
     -> MostlySharpened RCods spec.
 Proof.
   intros; exists (adt, cadt); eauto.
@@ -124,11 +123,10 @@ Definition SharpenStep
   RCods
   {RCodsReflexive : forall A, Reflexive (RCods A)}
   {RCodsTransitive : forall A, Transitive (RCods A)}
-  (* {RCodsPreOrder : forall A, PreOrder (RCods A)} *)
   Sig
   adt :
   forall adt' adt''
-         (refine_adt' : @refineADT RCods RCodsReflexive Sig adt adt'),
+         (refine_adt' : @refineADT RCods Sig adt adt'),
     refineADT RCods adt' adt''
     -> refineADT RCods adt adt''.
 Proof.
@@ -147,8 +145,8 @@ Definition FullySharpenStep
   adt :
   forall adt' adt''
          (refine_adt' : refineADT RCods (Sig := Sig) adt adt'),
-    FullySharpenedUnderDelegates RCods HRCodsRefl adt' adt''
-    -> FullySharpenedUnderDelegates RCods HRCodsRefl adt adt''.
+    FullySharpenedUnderDelegates RCods adt' adt''
+    -> FullySharpenedUnderDelegates RCods adt adt''.
 Proof.
   unfold FullySharpenedUnderDelegates in *.
   intros; unshelve eapply transitivityT.
@@ -217,7 +215,7 @@ Definition BuildMostlySharpenedcADT
             pcMethods      := cMethods DelegateReps DelegateImpls |}.
 
 (* Proof component of the ADT is Qed-ed. *)
-Definition SharpenFully RCods {HRCodsRefl : forall A, Reflexive (RCods A)} {Sig}
+Definition SharpenFully RCods {Sig}
   : forall
     (spec : ADT Sig)
     (DelegateIDs : nat)
@@ -291,7 +289,7 @@ Definition SharpenFully RCods {HRCodsRefl : forall A, Reflexive (RCods A)} {Sig}
                (Methods spec idx)
                (LiftcMethod (cMethods DelegateReps DelegateImpls idx)))
     -> FullySharpenedUnderDelegates
-        RCods HRCodsRefl
+        RCods
          spec
          {| Sharpened_DelegateSigs := DelegateSigs;
             Sharpened_Implementation := BuildMostlySharpenedcADT Sig DelegateSigs rep cConstructors
@@ -299,7 +297,7 @@ Definition SharpenFully RCods {HRCodsRefl : forall A, Reflexive (RCods A)} {Sig}
             Sharpened_DelegateSpecs := DelegateSpecs |}.
 Proof.
   intros * cConstructorsRefinesSpec cMethodsRefinesSpec DelegateReps DelegateImpls DelegateImplRefinesSpec.
-  eapply (@refinesADT RCods _ Sig spec (LiftcADT (existT _ (rep DelegateReps)
+  eapply (@refinesADT RCods Sig spec (LiftcADT (existT _ (rep DelegateReps)
                                                  {| pcConstructors := _;
                                                     pcMethods := _|}))
             (cAbsR_mono DelegateReps DelegateImpls DelegateImplRefinesSpec)
@@ -355,7 +353,7 @@ Proof.
   induction dom; simpl in *; eauto.
 Qed.
 
-Lemma cConstructors_AbsR {Sig} RCods {HRCodsRefl : forall A, Reflexive (RCods A)} {spec : ADT Sig}
+Lemma cConstructors_AbsR {Sig} RCods {spec : ADT Sig}
       (impl : FullySharpened RCods spec)
       midx
   :
@@ -465,7 +463,7 @@ Proof.
   destruct cod; eauto.
 Qed.
 
-Lemma cMethods_AbsR RCods {HRCodsRefl : forall A, Reflexive (RCods A)} {Sig} {spec : ADT Sig}
+Lemma cMethods_AbsR RCods {Sig} {spec : ADT Sig}
       (impl : FullySharpened RCods spec)
       midx
       (r_o : Rep spec)

@@ -5,7 +5,7 @@ Require Import Fiat.Common
 (* A notation-friendly version of the setoid morphisms
    infrastructure for ADT refinement. *)
 
-Theorem refineADT_BuildADT_Rep RCods {HRCodsRefl : forall A, Reflexive (RCods A)} n n' consSigs methSigs oldRep newRep
+Theorem refineADT_BuildADT_Rep RCods n n' consSigs methSigs oldRep newRep
       (AbsR_mono : oldRep -> newRep -> Prop)
       (AbsR_anti : oldRep -> newRep -> Prop)
 : @respectful_heteroT _ _ _ _
@@ -28,12 +28,12 @@ Theorem refineADT_BuildADT_Rep RCods {HRCodsRefl : forall A, Reflexive (RCods A)
    unfold Proper, respectful_heteroT; intros.
    let A := match goal with |- refineADT ?RCods ?A ?B => constr:(A) end in
    let B := match goal with |- refineADT ?RCods ?A ?B => constr:(B) end in
-   eapply (@refinesADT RCods _ _ A B AbsR_mono AbsR_anti);
+   eapply (@refinesADT RCods _ A B AbsR_mono AbsR_anti);
      unfold id, pointwise_relation in *; simpl in *; intros; eauto.
  Qed.
 
 Lemma refineADT_BuildADT_Both
-  RCods {HRCodsRefl : forall A, Reflexive (RCods A)} rep n n' consigs methSigs
+  RCods rep n n' consigs methSigs
   : forall oldCons newCons,
     (forall consIdx, @refineConstructor _ _ eq _
                   (getConsDef oldCons consIdx)

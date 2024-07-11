@@ -232,9 +232,7 @@ Qed.
 Lemma refineADT_Build_ADT_Rep Sig oldRep newRep
       (AbsR_mono : oldRep -> newRep -> Prop)
       (AbsR_anti : oldRep -> newRep -> Prop)
-      RCods
-      {HRCodsRefl : forall A, Reflexive (RCods A)}
-:
+      RCods :
   (@respectful_heteroT
      (forall idx, constructorType oldRep (ConstructorDom Sig idx))
      (forall idx, constructorType newRep (ConstructorDom Sig idx))
@@ -271,7 +269,7 @@ Proof.
   unfold Proper, respectful_heteroT; intros.
   let A := match goal with |- refineADT ?RCods ?A ?B => constr:(A) end in
   let B := match goal with |- refineADT ?RCods ?A ?B => constr:(B) end in
-  eapply (@refinesADT RCods HRCodsRefl Sig A B AbsR_mono);
+  eapply (@refinesADT RCods Sig A B AbsR_mono);
     unfold id, pointwise_relation in *; simpl in *; intros; eauto.
 Qed.
 
@@ -281,7 +279,7 @@ Qed.
 
 (** Refining Methods is a valid ADT refinement. *)
 
-Lemma refineADT_Build_ADT_Method rep RCods {HRCodsRefl : forall A, Reflexive (RCods A)} Sig cs
+Lemma refineADT_Build_ADT_Method rep RCods Sig cs
 : forall ms ms',
     (forall idx, @refineMethod _ _ eq eq RCods
                                  (fst (MethodDomCod Sig idx))
@@ -310,7 +308,7 @@ Qed.
     refinement steps are better, so using the previous refinements
     should be the preferred mode. ]*)
 
-Lemma refineADT_Build_ADT_Both rep RCods {HRCodsRefl : forall A, Reflexive (RCods A)} Sig
+Lemma refineADT_Build_ADT_Both rep RCods Sig
 : forall ms ms',
     (forall idx, @refineMethod _ _ eq eq RCods
                                  (fst (MethodDomCod Sig idx))

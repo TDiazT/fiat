@@ -44,12 +44,13 @@ Section HoneRepresentation.
     {| methBody := absMethod AbsR_mono AbsR_anti (methBody oldCons) |}.
 
   Lemma refineADT_BuildADT_Rep_default
-        RCods {RCodsRefl : forall A, Reflexive (RCods A)}
-        {n n'}
-        {consSigs : Vector.t consSig n}
-        {methSigs : Vector.t methSig n'}
-        (consDefs : ilist (B := @consDef oldRep) consSigs)
-        (methDefs : ilist (B := @methDef oldRep) methSigs) :
+    RCods
+    {RCodsRefl : forall A, Reflexive (RCods A)}
+    {n n'}
+    {consSigs : Vector.t consSig n}
+    {methSigs : Vector.t methSig n'}
+    (consDefs : ilist (B := @consDef oldRep) consSigs)
+    (methDefs : ilist (B := @methDef oldRep) methSigs) :
     refineADT
       RCods
       (BuildADT consDefs methDefs)
@@ -249,7 +250,6 @@ Abort.
      spawn off subgoals for each operation in one fell-swoop. *)
   Lemma refineADT_BuildADT_Rep_refine_All
         RCods
-        {HRCodsRefl : forall A, Reflexive (RCods A)}
         {n n'}
         (consSigs : Vector.t consSig n)
         (methSigs : Vector.t methSig n')

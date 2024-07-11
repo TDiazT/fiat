@@ -180,7 +180,7 @@ Section MethodRefinement.
 
 End MethodRefinement.
 
-Record refineADT RCods {HRCodsRefl : forall A, Reflexive (RCods A)} {Sig} (A B : ADT Sig) :=
+Record refineADT RCods {Sig} (A B : ADT Sig) :=
   refinesADT {
       AbsR_mono : _;
       AbsR_anti : _;

@@ -403,7 +403,10 @@ Definition SigRCods (A : refinableType) := (ARef A).(refinement).
 
 Tactic Notation "hone" "representation" "using" open_constr(AbsR_mono') "and" open_constr(AbsR_anti') :=
   eapply SharpenStep;
-  [try typeclasses eauto |eapply refineADT_BuildADT_Rep_refine_All with (AbsR_mono := AbsR_mono') (AbsR_anti := AbsR_anti');
+  [
+    typeclasses eauto
+  | typeclasses eauto
+  | eapply refineADT_BuildADT_Rep_refine_All with (AbsR_mono := AbsR_mono') (AbsR_anti := AbsR_anti');
     [ repeat (first [eapply refine_Constructors_nil
                     | eapply refine_Constructors_cons;
                       [ intros; simpl; intros;
@@ -438,8 +441,8 @@ Tactic Notation "hone" "representation" "using" open_constr(AbsR_mono') "and" op
 
   Theorem implementation : FullySharpened SigRCods naive_implementation .
   Proof.
-    (* Set Printing All. *)
     start sharpening ADT.
+
     hone representation using rel_mono and rel_anti.
 
     - monad_simpl.
@@ -529,7 +532,7 @@ Ltac FullySharpenEachMethod DelegateSigs DelegateReps delegateSpecs :=
                         | Vector.t _ ?n => n
                         end in
     match goal with
-      |- FullySharpenedUnderDelegates ?RCods ?RCodsRefl (@BuildADT ?Rep ?n ?n' ?consSigs ?methSigs ?consDefs ?methDefs) _ =>
+      |- FullySharpenedUnderDelegates ?RCods (@BuildADT ?Rep ?n ?n' ?consSigs ?methSigs ?consDefs ?methDefs) _ =>
         (* idtac "ok" end. *)
       ilist_of_evar_dep n
         (Fin.t NumDelegates -> Type)
@@ -549,7 +552,7 @@ Ltac FullySharpenEachMethod DelegateSigs DelegateReps delegateSpecs :=
         ltac:(fun cMeths =>
                 eapply (@Notation_Friendly_SharpenFully
                           Rep NumDelegates n n'
-                          RCods RCodsRefl
+                          RCods
                           consSigs methSigs
                           consDefs methDefs
                           DelegateSigs DelegateReps
@@ -578,7 +581,8 @@ Ltac FullySharpenEachMethod DelegateSigs DelegateReps delegateSpecs :=
              )))
     end; try (simpl; repeat split; intros; subst).
     - eapply FullySharpened_Finish;
-      [ try typeclasses eauto
+      [ typeclasses eauto
+      | typeclasses eauto
       | FullySharpenEachMethod
           (@Vector.nil ADTSig)
           (@Vector.nil Type)
@@ -603,11 +607,6 @@ Ltac FullySharpenEachMethod DelegateSigs DelegateReps delegateSpecs :=
         refineEqProdSimpl. pick. monad_simpl. done.
         higher_order_reflexivity.
 
-
-
-    (********)
-    (* End copying tactic directly *)
-    (********)
   Defined.
 
   (* We can now extract a standlone Gallina term for this ADT. *)

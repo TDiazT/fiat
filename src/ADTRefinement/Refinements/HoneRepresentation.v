@@ -67,7 +67,8 @@ Section HoneRepresentation.
   Lemma refine_absMethod
         (dom : list Type)
         (cod : option refinableType)
-        RCods {RCodsRefl : forall A, Reflexive (RCods A)}
+        RCods
+        {RCodsRefl : forall A, Reflexive (RCods A)}
         (oldMethod : methodType oldRep dom cod)
   : @refineMethod oldRep newRep AbsR_mono AbsR_anti RCods _ _
                    oldMethod
