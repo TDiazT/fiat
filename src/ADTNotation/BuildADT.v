@@ -23,7 +23,7 @@ Class RepHint := {rep : Type}.
 (* This class is used to give a hint to help infer the
    return type. *)
 
-Class CoDHint := {codHint : option Type}.
+Class CoDHint := {codHint : option refinableType}.
 
 (* Notations for ADT methods. Constructors and methods
    are parameterized by a signature that includes the
@@ -157,9 +157,9 @@ Record methDef {Rep : Type} (Sig : methSig) :=
 
 Notation "'Def' 'Method0' id r .. xn : 'rep' '*' cod := bod" :=
   (Build_methDef
-     {| methID := id; methDom := [ ] ; methCod := Some (cod%type : Type) |}
+     {| methID := id; methDom := [ ] ; methCod := Some (cod%type : refinableType) |}
      (fun r => .. (fun xn =>
-                     let _ := {| codHint := Some (cod%type : Type) |} in
+                     let _ := {| codHint := Some (cod%type : refinableType) |} in
                      (bod%comp : methodType' _ [ ] codHint )) ..))
     (no associativity, id at level 0, r closed binder , xn closed binder,
      only parsing,
@@ -169,9 +169,9 @@ Notation "'Def' 'Method0' id r .. xn : 'rep' '*' cod := bod" :=
 
 Notation "'Def' 'Method1' id r .. xn : 'rep' '*' cod := bod" :=
   (Build_methDef
-     {| methID := id; methDom := [ _ ] ; methCod := Some (cod%type : Type) |}
+     {| methID := id; methDom := [ _ ] ; methCod := Some (cod%type : refinableType) |}
      (fun r => .. (fun xn =>
-                     let _ := {| codHint := Some (cod%type : Type) |} in
+                     let _ := {| codHint := Some (cod%type : refinableType) |} in
                      (bod%comp : methodType' _ [ ] codHint )) ..))
     (no associativity, id at level 0, r closed binder , xn closed binder,
      only parsing,
@@ -181,9 +181,9 @@ Notation "'Def' 'Method1' id r .. xn : 'rep' '*' cod := bod" :=
 
 Notation "'Def' 'Method2' id r .. xn : 'rep' '*' cod := bod" :=
   (Build_methDef
-     {| methID := id; methDom := [ _; _ ] ; methCod := Some (cod%type : Type) |}
+     {| methID := id; methDom := [ _; _ ] ; methCod := Some (cod%type : refinableType) |}
      (fun r => .. (fun xn =>
-                     let _ := {| codHint := Some (cod%type : Type) |} in
+                     let _ := {| codHint := Some (cod%type : refinableType) |} in
                      (bod%comp : methodType' _ [ ] codHint )) ..))
     (no associativity, id at level 0, r closed binder , xn closed binder,
      only parsing,
@@ -193,9 +193,9 @@ Notation "'Def' 'Method2' id r .. xn : 'rep' '*' cod := bod" :=
 
 Notation "'Def' 'Method3' id r .. xn : 'rep' '*' cod := bod" :=
   (Build_methDef
-     {| methID := id; methDom := [ _; _; _ ] ; methCod := Some (cod%type : Type) |}
+     {| methID := id; methDom := [ _; _; _ ] ; methCod := Some (cod%type : refinableType) |}
      (fun r => .. (fun xn =>
-                     let _ := {| codHint := Some (cod%type : Type) |} in
+                     let _ := {| codHint := Some (cod%type : refinableType) |} in
                      (bod%comp : methodType' _ [ ] codHint )) ..))
     (no associativity, id at level 0, r closed binder , xn closed binder,
      only parsing,
@@ -205,9 +205,9 @@ Notation "'Def' 'Method3' id r .. xn : 'rep' '*' cod := bod" :=
 
 Notation "'Def' 'Method4' id r .. xn : 'rep' '*' cod := bod" :=
   (Build_methDef
-     {| methID := id; methDom := [_; _; _; _ ] ; methCod := Some (cod%type : Type) |}
+     {| methID := id; methDom := [_; _; _; _ ] ; methCod := Some (cod%type : refinableType) |}
      (fun r => .. (fun xn =>
-                     let _ := {| codHint := Some (cod%type : Type) |} in
+                     let _ := {| codHint := Some (cod%type : refinableType) |} in
                      (bod%comp : methodType' _ [ ] codHint )) ..))
     (no associativity, id at level 0, r closed binder , xn closed binder,
      only parsing,
@@ -217,9 +217,9 @@ Notation "'Def' 'Method4' id r .. xn : 'rep' '*' cod := bod" :=
 
 Notation "'Def' 'Method5' id r .. xn : 'rep' '*' cod := bod" :=
   (Build_methDef
-     {| methID := id; methDom := [_; _; _; _; _ ] ; methCod := Some (cod%type : Type) |}
+     {| methID := id; methDom := [_; _; _; _; _ ] ; methCod := Some (cod%type : refinableType) |}
      (fun r => .. (fun xn =>
-                     let _ := {| codHint := Some (cod%type : Type) |} in
+                     let _ := {| codHint := Some (cod%type : refinableType) |} in
                      (bod%comp : methodType' _ [ ] codHint )) ..))
     (no associativity, id at level 0, r closed binder , xn closed binder,
      only parsing,
@@ -469,12 +469,13 @@ Section NotationExample.
              (k : Key)
     : Prop := exists v, r (k, v).
 
+
   Definition CacheSig : ADTSig :=
     ADTsignature {
         Constructor "EmptyCache" : rep,
-        Method "AddKey" : rep * Key * Value -> rep * bool ,
-        Method "UpdateKey" : rep * Key * (Value -> Value) -> rep * bool ,
-        Method "LookupKey" :  rep * Key -> rep * (option Value)
+        Method "AddKey" : rep * Key * Value -> rep * ↑bool ,
+        Method "UpdateKey" : rep * Key * (Value -> Value) -> rep * ↑bool ,
+        Method "LookupKey" :  rep * Key -> rep * ↑(option Value)
       }%ADTSig.
 
   Definition CacheSpec : ADT _ :=
@@ -482,7 +483,7 @@ Section NotationExample.
        rep := Ensemble (Key * Value),
        Def Constructor0 "EmptyCache" : rep :=
          ret (Empty_set _) ,,
-       Def Method2 "AddKey" (r : rep) (k : Key) (v : Value) : rep * bool :=
+       Def Method2 "AddKey" (r : rep) (k : Key) (v : Value) : rep * ↑bool :=
          { r' | (SubEnsembleInsert (k, v) r (fst r')) /\
                 ((usedKey r k /\ snd r' = false) \/
                  (~ usedKey r k /\ snd r' = true))}

@@ -1,31 +1,37 @@
-Require Export Fiat.Common.Coq__8_4__8_5__Compat.
-Require Import Coq.Strings.Ascii
-        Coq.Bool.Bool
-        Coq.Lists.List.
+Require Export Fiat.Examples.Tutorial.RefinementInstances.
 
-Require Import Fiat.QueryStructure.Automation.AutoDB
-        Fiat.QueryStructure.Implementation.DataStructures.BagADT.BagADT
-        Fiat.QueryStructure.Automation.IndexSelection
-        Fiat.QueryStructure.Specification.SearchTerms.ListPrefix
-        Fiat.QueryStructure.Automation.SearchTerms.FindPrefixSearchTerms.
+Require Export Coq.Lists.List.
 
-Export Coq.Vectors.Vector
-        Coq.Strings.Ascii
-        Coq.Bool.Bool
-        Coq.Bool.Bvector
-        Coq.Lists.List.
+Export Lists.List.ListNotations.
 
-Export Fiat.QueryStructure.Automation.AutoDB
-        Fiat.QueryStructure.Implementation.DataStructures.BagADT.BagADT
-        Fiat.QueryStructure.Automation.IndexSelection
-        Fiat.QueryStructure.Specification.SearchTerms.ListPrefix
-        Fiat.QueryStructure.Automation.SearchTerms.FindPrefixSearchTerms.
+Require Export Fiat.Common.ilist.
+
+Require Export Fiat.ADT.Core.
+Require Export
+  Fiat.ADTNotation.BuildADTSig
+  Fiat.ADTNotation.BuildADT
+  Fiat.ADTNotation.BuildComputationalADT.
+Require Export
+  Fiat.ADTRefinement.GeneralBuildADTRefinements
+  Fiat.ADTRefinement.Core
+  Fiat.ADTRefinement.GeneralRefinements.
+Require Export Fiat.ADTRefinement.BuildADTRefinements.HoneRepresentation.
+Require Export Fiat.Computation.Refinements.Tactics.
 
 Ltac pick := erewrite refine_pick_val by eauto.
 Ltac pick_by H := erewrite refine_pick_val by (eapply H; eauto).
 
 Hint Resolve refine_pick_val.
 Hint Rewrite <- app_nil_end.
+
+Lemma refineR_pick_val A R `{Reflexive A R} a (P : A -> Prop)
+  : P a -> @refineR A A R ({x | P x })%comp
+            (ret a).
+Proof.
+    t_refine.
+Qed.
+
+Ltac pick_byR H := erewrite refineR_pick_val by (eapply H; eauto).
 
 Definition testnil A B (ls : list A) (cnil ccons : B) : B :=
   match ls with
@@ -37,36 +43,40 @@ Definition testnil A B (ls : list A) (cnil ccons : B) : B :=
    Anomaly "Uncaught exception Not_found."
    at Defined. Overwriting the following folding tactics solves this problem.
 *)
-Ltac fold_heading_hyps_in H ::= idtac.
-Ltac fold_heading_hyps  ::= idtac.
+(* Ltac fold_heading_hyps_in H ::= idtac. *)
+(* Ltac fold_heading_hyps  ::= idtac. *)
 
-Lemma refine_testnil : forall A (ls : list A) B (c1 cnil ccons : Comp B),
-  (ls = nil -> refine c1 cnil)
-  -> (ls <> nil -> refine c1 ccons)
-  -> refine c1 (testnil ls cnil ccons).
-Proof.
-  destruct ls; intuition congruence.
+Lemma refine_testnil : forall A `{Complete A} (ls : list A) B R (c1 cnil ccons : Comp B),
+    is_complete ls ->
+    (ls = nil -> refineR R c1 cnil)
+    -> (ls <> nil -> refineR R c1 ccons)
+    -> refineR R c1 (testnil ls cnil ccons).
+Proof with eauto with icp.
+  intros ? ? ls.
+  induction ls using exc_list_ind; try intuition congruence.
+  intros ? ? ? ? ? Hcontra.
+  inversion Hcontra...
 Qed.
 
 Add Parametric Morphism A B
 : (@testnil A (Comp B))
     with signature
     @eq (list A)
-      ==> @refine B
-      ==> @refine B
-      ==> @refine B
+      ==> @refineEq B
+      ==> @refineEq B
+      ==> @refineEq B
       as refine_testnil_morphism.
 Proof.
   destruct y; auto.
 Qed.
 
 Lemma refine_testnil_ret : forall A B (ls : list A) (cnil ccons : B),
-  refine (testnil ls (ret cnil) (ret ccons)) (ret (testnil ls cnil ccons)).
+  refineEq (testnil ls (ret cnil) (ret ccons)) (ret (testnil ls cnil ccons)).
 Proof.
   destruct ls; reflexivity.
 Qed.
 
-Ltac refine_testnil ls' := etransitivity; [ apply refine_testnil with (ls := ls'); intro | ].
+Ltac refine_testnil ls' := etransitivity; [ eapply refine_testnil with (ls := ls'); eauto; intro | ].
 
 Definition let_ A B (v : A) (f : A -> B) := let x := v in f v.
 
@@ -74,16 +84,16 @@ Add Parametric Morphism A B
 : (@let_ A (Comp B))
     with signature
     @eq A
-      ==> pointwise_relation _ (@refine B)
-      ==> @refine B
+      ==> pointwise_relation _ (@refineEq B)
+      ==> @refineEq B
       as refine_let_morphism.
 Proof.
   unfold pointwise_relation, let_; auto.
 Qed.
 
 Lemma refine_let : forall A B (v : A) c1 (c2 : A -> Comp B),
-  (forall x, x = v -> refine c1 (c2 x))
-  -> refine c1 (let_ v c2).
+  (forall x, x = v -> refineEq c1 (c2 x))
+  -> refineEq c1 (let_ v c2).
 Proof.
   unfold let_; auto.
 Qed.
@@ -104,103 +114,120 @@ Hint Rewrite refine_let_ret refine_testnil_ret : cleanup.
 Global Opaque let_.
 
 Ltac done := try match goal with
-                 | [ |- refine ?a ?b ] => is_evar b; instantiate (1 := a)
+                 | [ |- refineEq ?a ?b ] => is_evar b; instantiate (1 := a)
+                 | [ |- refineR ?R ?a ?b ] => is_evar b; instantiate (1 := a)
                  end; finish honing.
+
+
+Ltac refineEqOldSimpl := eapply refineEquiv_refine_proper; monad_simpl.
+
+Lemma refineEquiv_refineProd_proper {X} {A : refinableType} RCods (c c' c'' : Comp (X * A))
+  : refineEq c' c ->
+    refineProd RCods  c c'' ->
+    refineProd RCods  c' c''.
+Proof.
+  intros H1.
+  unfold refineProd.
+  refineEqOldSimpl; eauto.
+Qed.
+
+Ltac refineEqProdSimpl := eapply refineEquiv_refineProd_proper; monad_simpl.
+
 Ltac cleanup := autorewrite with cleanup.
 Ltac finalize := finish_SharpeningADT_WithoutDelegation.
 
-Lemma tl_cons : forall A (x : A) ls1 ls2,
-  x :: ls1 = ls2
-  -> ls1 = tl ls2.
-Proof.
-  destruct ls2; simpl; congruence.
-Qed.
+(* Lemma tl_cons : forall A (x : A) ls1 ls2, *)
+(*   x :: ls1 = ls2 *)
+(*   -> ls1 = tl ls2. *)
+(* Proof. *)
+(*   destruct ls2; simpl; congruence. *)
+(* Qed. *)
 
-Hint Resolve tl_cons.
+(* Hint Resolve tl_cons. *)
 
-Lemma appendone_contra : forall A (ls : list A) x, ls ++ x :: nil = nil
-  -> False.
-Proof.
-  intros.
-  apply (f_equal (@length _)) in H.
-  rewrite app_length in H.
-  simpl in *; omega.
-Qed.
+(* Lemma appendone_contra : forall A (ls : list A) x, ls ++ x :: nil = nil *)
+(*   -> False. *)
+(* Proof. *)
+(*   intros. *)
+(*   apply (f_equal (@length _)) in H. *)
+(*   rewrite app_length in H. *)
+(*   simpl in *; omega. *)
+(* Qed. *)
 
-Hint Immediate appendone_contra.
+(* Hint Immediate appendone_contra. *)
 
-Ltac begin := eexists; intro; set_evars.
+(* Ltac begin := eexists; intro; set_evars. *)
 
-Ltac arithmetic := intros;
-  repeat match goal with
-         | [ |- context[max ?a ?b] ] => let Heq := fresh "Heq" in
-                                        destruct (Max.max_spec a b) as [ [? Heq] | [? Heq] ];
-                                          rewrite Heq in *; clear Heq
-         end; omega.
+(* (* Ltac arithmetic := intros; *) *)
+(* (*   repeat match goal with *) *)
+(* (*          | [ |- context[max ?a ?b] ] => let Heq := fresh "Heq" in *) *)
+(* (*                                         destruct (Max.max_spec a b) as [ [? Heq] | [? Heq] ]; *) *)
+(* (*                                           rewrite Heq in *; clear Heq *) *)
+(* (*          end; omega. *) *)
 
-Ltac refines := intros; repeat computes_to_econstructor; repeat computes_to_inv; subst.
+(* Ltac refines := intros; repeat computes_to_econstructor; repeat computes_to_inv; subst. *)
 
-Require Import Fiat.QueryStructure.Automation.MasterPlan.
-Ltac FindAttributeUses := EqExpressionAttributeCounter.
-Ltac BuildEarlyIndex := LastCombineCase6 BuildEarlyEqualityIndex.
-Ltac BuildLastIndex := LastCombineCase5 BuildLastEqualityIndex.
-Ltac IndexUse := EqIndexUse.
-Ltac createEarlyTerm := createEarlyEqualityTerm .
-Ltac createLastTerm := createLastEqualityTerm.
-Ltac IndexUse_dep := EqIndexUse_dep.
-Ltac createEarlyTerm_dep := createEarlyEqualityTerm_dep.
-Ltac createLastTerm_dep := createLastEqualityTerm_dep.
-Ltac BuildEarlyBag := BuildEarlyEqualityBag.
-Ltac BuildLastBag := BuildLastEqualityBag.
+(* Require Import Fiat.QueryStructure.Automation.MasterPlan. *)
+(* Ltac FindAttributeUses := EqExpressionAttributeCounter. *)
+(* Ltac BuildEarlyIndex := LastCombineCase6 BuildEarlyEqualityIndex. *)
+(* Ltac BuildLastIndex := LastCombineCase5 BuildLastEqualityIndex. *)
+(* Ltac IndexUse := EqIndexUse. *)
+(* Ltac createEarlyTerm := createEarlyEqualityTerm . *)
+(* Ltac createLastTerm := createLastEqualityTerm. *)
+(* Ltac IndexUse_dep := EqIndexUse_dep. *)
+(* Ltac createEarlyTerm_dep := createEarlyEqualityTerm_dep. *)
+(* Ltac createLastTerm_dep := createLastEqualityTerm_dep. *)
+(* Ltac BuildEarlyBag := BuildEarlyEqualityBag. *)
+(* Ltac BuildLastBag := BuildLastEqualityBag. *)
 
-Ltac CreateTerm := IndexUse.
-Ltac EarlyIndex := createEarlyTerm.
-Ltac LastIndex := createLastTerm.
-Ltac makeClause_dep := IndexUse_dep.
-Ltac EarlyIndex_dep := createEarlyTerm_dep.
-Ltac LastIndex_dep := createLastTerm_dep.
+(* Ltac CreateTerm := IndexUse. *)
+(* Ltac EarlyIndex := createEarlyTerm. *)
+(* Ltac LastIndex := createLastTerm. *)
+(* Ltac makeClause_dep := IndexUse_dep. *)
+(* Ltac EarlyIndex_dep := createEarlyTerm_dep. *)
+(* Ltac LastIndex_dep := createLastTerm_dep. *)
 
-Ltac chooseIndexes :=
-  let makeIndex attrlist :=
-      make_simple_indexes attrlist
-        ltac:(LastCombineCase6 BuildEarlyEqualityIndex)
-        ltac:(LastCombineCase5 BuildLastEqualityIndex) in
-  GenerateIndexesForAll EqExpressionAttributeCounter ltac:(fun attrlist =>
-                                                             let attrlist' := eval compute in (PickIndexes _ (CountAttributes' attrlist)) in makeIndex attrlist').
+(* Ltac chooseIndexes := *)
+(*   let makeIndex attrlist := *)
+(*       make_simple_indexes attrlist *)
+(*         ltac:(LastCombineCase6 BuildEarlyEqualityIndex) *)
+(*         ltac:(LastCombineCase5 BuildLastEqualityIndex) in *)
+(*   GenerateIndexesForAll EqExpressionAttributeCounter ltac:(fun attrlist => *)
+(*                                                              let attrlist' := eval compute in (PickIndexes _ (CountAttributes' attrlist)) in makeIndex attrlist'). *)
 
-Ltac implement_filters_using_find :=
-  implement_filters_with_find ltac:(find_simple_search_term CreateTerm EarlyIndex LastIndex)
-    ltac:(find_simple_search_term_dep makeClause_dep EarlyIndex_dep LastIndex_dep).
+(* Ltac implement_filters_using_find := *)
+(*   implement_filters_with_find ltac:(find_simple_search_term CreateTerm EarlyIndex LastIndex) *)
+(*     ltac:(find_simple_search_term_dep makeClause_dep EarlyIndex_dep LastIndex_dep). *)
 
-Ltac pick_new_database :=
-  match goal with
-  | [H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n |- _ ] =>
-    setoid_rewrite (refine_pick_val (@DelegateToBag_AbsR qs_schema indices r_o) H)
-  end;
-  monad_simpl.
+(* Ltac pick_new_database := *)
+(*   match goal with *)
+(*   | [H : @DelegateToBag_AbsR ?qs_schema ?indices ?r_o ?r_n |- _ ] => *)
+(*     setoid_rewrite (refine_pick_val (@DelegateToBag_AbsR qs_schema indices r_o) H) *)
+(*   end; *)
+(*   monad_simpl. *)
 
-Ltac planOne := plan CreateTerm EarlyIndex LastIndex
-                     makeClause_dep EarlyIndex_dep LastIndex_dep.
+(* Ltac planOne := plan CreateTerm EarlyIndex LastIndex *)
+(*                      makeClause_dep EarlyIndex_dep LastIndex_dep. *)
 
-Require Import Fiat.QueryStructure.Automation.QSImplementation.
+(* Require Import Fiat.QueryStructure.Automation.QSImplementation. *)
 
-Ltac final_optimizations := eapply FullySharpened_Finish.
+(* Ltac final_optimizations := eapply FullySharpened_Finish. *)
 
-Ltac determinize :=
-  match goal with
-  | |- appcontext[ @BuildADT (IndexedQueryStructure ?Schema ?Indexes) ] =>
-    FullySharpenQueryStructure Schema Indexes
-  end.
+(* (* Ltac determinize := *) *)
+(* (*   match goal with *) *)
+(* (*   | |- appcontext[ @BuildADT (IndexedQueryStructure ?Schema ?Indexes) ] => *) *)
+(* (*     FullySharpenQueryStructure Schema Indexes *) *)
+(* (*   end. *) *)
 
-Ltac choose_data_structures :=
-  simpl; BuildQSIndexedBags' BuildEarlyBag BuildLastBag.
+(* Ltac choose_data_structures := *)
+(*   simpl; BuildQSIndexedBags' BuildEarlyBag BuildLastBag. *)
 
-Ltac final_simplification :=
-  simpl Sharpened_Implementation;
-  unfold
-    Update_Build_IndexedQueryStructure_Impl_cRep,
-  Join_Comp_Lists',
-  GetIndexedQueryStructureRelation,
-  GetAttributeRaw; simpl.
+(* Ltac final_simplification := *)
+(*   simpl Sharpened_Implementation; *)
+(*   unfold *)
+(*     Update_Build_IndexedQueryStructure_Impl_cRep, *)
+(*   Join_Comp_Lists', *)
+(*   GetIndexedQueryStructureRelation, *)
+(*   GetAttributeRaw; simpl. *)
 
-Ltac use_this_one := higher_order_reflexivityT.
+(* Ltac use_this_one := higher_order_reflexivityT. *)

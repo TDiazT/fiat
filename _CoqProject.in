@@ -4,6 +4,7 @@
 -I src/Common/Tactics
 -I .
 -arg -w -arg unsupported-attributes
+-arg allow-rewrite-rules
 Bedrock/Memory.v
 Bedrock/Nomega.v
 Bedrock/Word.v
@@ -286,6 +287,8 @@ src/Examples/Smtp/Smtp.v
 src/Examples/Tutorial/BookstoreMoreManual.v
 src/Examples/Tutorial/NotInList.v
 src/Examples/Tutorial/NotInList_template.v
+src/Examples/Tutorial/Refinement.v
+src/Examples/Tutorial/RefinementInstances.v
 src/Examples/Tutorial/Queue.v
 src/Examples/Tutorial/Queue_template.v
 src/Examples/Tutorial/Tutorial.v

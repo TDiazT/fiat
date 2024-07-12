@@ -1,5 +1,24 @@
 Require Export Fiat.Common Fiat.Computation.
 
+Require Export Fiat.Examples.Tutorial.Refinement.
+
+Record refinableType := {
+    A : Type ;
+    ARef : Refinable A
+  }.
+
+Definition refinableType_toType (x : refinableType) := x.(A).
+
+Coercion refinableType_toType : refinableType >-> Sortclass.
+
+Existing Class refinableType.
+Instance refTypeAuto A (HA : Refinable A) : refinableType.
+econstructor. exact HA.
+Defined.
+
+#[export]
+Notation "↑ A" := (@refTypeAuto A _) (at level 10).
+
 (** Type of a constructor. *)
 Fixpoint constructorType (rep : Type)
          (dom : list Type) : Type :=
@@ -13,7 +32,7 @@ Fixpoint constructorType (rep : Type)
 (** Type of a method. *)
 Fixpoint methodType' (rep : Type)
          (dom : list Type)
-         (cod : option Type) : Type :=
+         (cod : option refinableType) : Type :=
   match dom with
   | nil =>
     match cod with
@@ -23,9 +42,11 @@ Fixpoint methodType' (rep : Type)
   | cons d dom' =>
     d -> methodType' rep dom' cod (* Method arguments *)
   end.
+
+
 Definition methodType (rep : Type)
            (dom : list Type)
-           (cod : option Type) : Type :=
+           (cod : option refinableType) : Type :=
   rep -> methodType' rep dom cod.
 
 (* Signatures of ADT operations *)
@@ -41,6 +62,6 @@ Record ADTSig :=
     ConstructorDom : ConstructorIndex -> list Type;
 
     (** The representation-independent domain and codomain of methods. *)
-    MethodDomCod : MethodIndex -> (list Type) * (option Type)
+    MethodDomCod : MethodIndex -> (list Type) * (option refinableType)
 
   }.

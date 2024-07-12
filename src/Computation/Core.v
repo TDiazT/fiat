@@ -119,19 +119,30 @@ Qed.
 (** The old program might be non-deterministic, and the new program
       less so.  This means we want to say that if [new] can compute to
       [v], then [old] should be able to compute to [v], too. *)
-Definition refine {A}
+Definition refine {A B} (R : Comp A -> Comp B -> Prop )
+           (old : Comp A)
+           (new : Comp B)
+  := R old new.
+
+Definition refineR {A B} (R : A -> B -> Prop )
+           (old : Comp A)
+           (new : Comp B)
+  := forall v, new ↝ v -> exists v', old ↝ v' /\ R v' v.
+
+Definition refineEq {A}
            (old : Comp A)
            (new : Comp A)
   := forall v, new ↝ v -> old ↝ v.
+
 
 (* A definition and notation for pretty printing the goals used to
    interactively deriving refinements. *)
 
 Definition Refinement_Of {A} (c : Comp A) :=
-  {c' | refine c c'}.
+  {c' | refineEq c c'}.
 
 Notation "'Refinement' 'of' c" :=
-  {c' | refine c c'}
+  {c' | refineEq c c'}
     (at level 0, no associativity,
      format "'Refinement'  'of' '/' '[v'    c ']' " )
   : comp_scope.
@@ -140,7 +151,8 @@ Notation "'Refinement' 'of' c" :=
 Definition refineEquiv {A}
            (old : Comp A)
            (new : Comp A)
-  := refine old new /\ refine new old.
+  := refineEq  old new /\ refineEq new old.
+
 
 Local Ltac t := repeat first [ solve [ unfold computes_to in *; eauto ]
                                         | progress hnf in *
@@ -148,11 +160,25 @@ Local Ltac t := repeat first [ solve [ unfold computes_to in *; eauto ]
                                         | split
                                         | progress split_and ].
 
-Global Instance refine_PreOrder A : PreOrder (@refine A).
+#[global]
+Instance refineR_Reflexive A (R : A -> A -> Prop) `{Reflexive A R} : Reflexive (refineR R ).
 t.
 Qed.
 
-Global Instance refineEquiv_Equivalence A : Equivalence (@refineEquiv A).
+#[global]
+Instance refineR_Transitive A (R : relation A) `{Transitive A R} : Transitive (refineR R).
+unfold refineR. intros ? ? ? Hyx Hzy.
+intros v Hz.
+destruct (Hzy _ Hz) as [v' [Hy ?]].
+destruct (Hyx _ Hy) as [v'' [? ?]].
+exists v''; eauto.
+Qed.
+
+Global Instance refineEq_PreOrder A : PreOrder (@refineEq A) | 1.
+t.
+Qed.
+
+Global Instance refineEquiv_Equivalence A : Equivalence (@refineEquiv A) | 1.
 t.
 Qed.
 
@@ -178,12 +204,12 @@ Ltac computes_to_inv :=
 
 Ltac computes_to_econstructor :=
   first
-    [ unfold refine; intros; eapply @ReturnComputes
-    | unfold refine; intros; eapply @BindComputes
-    | unfold refine; intros; eapply @PickComputes ].
+    [ unfold refineEq; intros; eapply @ReturnComputes
+    | unfold refineEq; intros; eapply @BindComputes
+    | unfold refineEq; intros; eapply @PickComputes ].
 
 Ltac computes_to_constructor :=
   first
-    [ unfold refine; intros; apply @ReturnComputes
-    | unfold refine; intros; apply @BindComputes
-    | unfold refine; intros; apply @PickComputes ].
+    [ unfold refineEq; intros; apply @ReturnComputes
+    | unfold refineEq; intros; apply @BindComputes
+    | unfold refineEq; intros; apply @PickComputes ].
