@@ -282,11 +282,11 @@ Section data.
         done.
 
     - finalize.
-      + unfold refineMethod, refineMethod'. intros ? ? [] *.
+      + unfold refineMethod, refineMethod'; intros; subst.
         monad_simpl. pick.
         higher_order_reflexivity.
 
-      + unfold refineMethod, refineMethod'. intros ? ? [].
+      + unfold refineMethod, refineMethod'; intros; subst.
         refineEqProdSimpl. pick. monad_simpl. done.
         higher_order_reflexivity.
 
@@ -295,6 +295,7 @@ Section data.
   (* We can now extract a standlone Gallina term for this ADT. *)
   Definition impl := Eval simpl in projT1 implementation.
   Print impl.
+
 
 
   (*******************************************)

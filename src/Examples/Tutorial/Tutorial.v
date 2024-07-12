@@ -9,7 +9,8 @@ Require Export Fiat.Common.ilist.
 Require Export Fiat.ADT.Core.
 Require Export
   Fiat.ADTNotation.BuildADTSig
-  Fiat.ADTNotation.BuildADT.
+  Fiat.ADTNotation.BuildADT
+  Fiat.ADTNotation.BuildComputationalADT.
 Require Export
   Fiat.ADTRefinement.GeneralBuildADTRefinements
   Fiat.ADTRefinement.Core

@@ -869,7 +869,6 @@ Ltac FullySharpenEachMethod DelegateSigs DelegateReps delegateSpecs :=
                         end in
     match goal with
       |- FullySharpenedUnderDelegates ?RCods (@BuildADT ?Rep ?n ?n' ?consSigs ?methSigs ?consDefs ?methDefs) _ =>
-        (* idtac "ok" end. *)
       ilist_of_evar_dep n
         (Fin.t NumDelegates -> Type)
         (fun D =>
