@@ -2,7 +2,10 @@ Require Import Tutorial.
 
 Section data.
   Variable data : Set.
-  Hypothesis (Hdata_not_impl : forall d : data, d ⊑ ? data).
+  Hypotheses (HRdata : Refinable data)
+               (HCdata : Complete data)
+               (HCMdata : CompleteMinimal data)
+               (Hdata_not_impl : forall d : data, d ⊑ ? data).
 
   (* Here we parameterize over an arbitrary type of data stored within stacks. *)
   Variable dummy : data.
