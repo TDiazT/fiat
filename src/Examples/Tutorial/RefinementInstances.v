@@ -16,19 +16,19 @@ Symbol exc_list_ind : forall (A : Type) (P : list A -> Type) (Hnil : P nil)
     (l : list A), P l.
 
 Rewrite Rules exc_list_indRed :=
-  | exc_list_ind ?A ?P ?Hnil ?Hcons ?Hnot_impl nil ==> ?Hnil
-  | exc_list_ind ?A ?P ?Hnil ?Hcons ?Hnot_impl (cons ?a ?l) ==> ?Hcons ?a ?l (exc_list_ind ?A ?P ?Hnil ?Hcons ?Hnot_impl ?l)
-  | exc_list_ind ?A ?P ?Hnil ?Hcons ?Hnot_impl (? _) ==> ?Hnot_impl.
+  | exc_list_ind ?A ?P ?Hnil ?Hcons ?Hnot_impl nil => ?Hnil
+  | exc_list_ind ?A ?P ?Hnil ?Hcons ?Hnot_impl (cons ?a ?l) => ?Hcons ?a ?l (exc_list_ind ?A ?P ?Hnil ?Hcons ?Hnot_impl ?l)
+  | exc_list_ind ?A ?P ?Hnil ?Hcons ?Hnot_impl (? _) => ?Hnot_impl.
 
 Rewrite Rules list_red_rew :=
   |  match @not_implemented (list ?A) as t0  return ?P with
      | nil => _
      | _ => _
-     end ==> @not_implemented (?P@{t0 := (@not_implemented (list ?A))})
+     end => @not_implemented (?P@{t0 := (@not_implemented (list ?A))})
   |  match ? (list ?A) as t0  return ?P with
      | nil => _
      | _ => _
-     end ==> @not_implemented (?P@{t0 := (? (list ?A))}).
+     end => @not_implemented (?P@{t0 := (? (list ?A))}).
 
 Axioms
     (noconf_unk_nil : forall {A}, ? (list A) = @nil A -> False)
@@ -188,13 +188,13 @@ Symbol exc_prod_ind :
           (p : A * B), P p.
 
 Rewrite Rules exc_prod_ind_rew :=
-| exc_prod_ind ?P ?Hp ?Hunk (?a,?b) ==> ?Hp ?a ?b
-| exc_prod_ind ?P ?Hp ?Hunk (? _) ==> ?Hunk.
+| exc_prod_ind ?P ?Hp ?Hunk (?a,?b) => ?Hp ?a ?b
+| exc_prod_ind ?P ?Hp ?Hunk (? _) => ?Hunk.
 
 Rewrite Rules prod_red_rew :=
   |  match @not_implemented (?A * ?B) as t0  return ?P with
      | pair _ _ => _
-     end ==> @not_implemented (?P@{t0 := (@not_implemented (?A * ?B))}).
+     end => @not_implemented (?P@{t0 := (@not_implemented (?A * ?B))}).
 
 Axioms
  (noconf_unk_prod : forall {A B} (p : A * B), ? (A * B) = p -> False)
