@@ -48,10 +48,10 @@ Section data.
       naive = fst opt ++ rev (snd opt).
 
   Definition rel_mono (naive : list data) (opt : list data * list data) :=
-    (ir_mono (rel naive)) opt.
+    ir_mono (rel naive) opt.
 
   Definition rel_anti (naive : list data) (opt : list data * list data) :=
-    (ir_anti (rel naive)) opt.
+    ir_anti (rel naive) opt.
 
   Lemma list_data_refl : forall l : list data,
       l ⊑ l.
