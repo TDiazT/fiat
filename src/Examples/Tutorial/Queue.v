@@ -198,7 +198,7 @@ Section data.
     inversion 1; eauto; contradiction.
   Qed.
 
-  Hint Resolve complete_list_cons.
+  Hint Resolve complete_list_cons : icp.
 
 
   (* Now we start deriving an implementation, in a correct-by-construction way. *)
@@ -239,7 +239,7 @@ Section data.
         *
           refineEqOldSimpl.
           refine_let (rev (snd r_n)).
-          erewrite eta_naive_snd with (naive := r_o) by eauto.
+          erewrite eta_naive_snd with (naive := r_o) by eauto with icp.
           monad_simpl.
           pick_by rel_reversed_rep.
           monad_simpl.
