@@ -5,7 +5,7 @@ Section data.
   Hypotheses (HRdata : Refinable data)
                (HCdata : Complete data)
                (HCMdata : CompleteMinimal data)
-               (Hdata_not_impl : forall d : data, d ⊑ ? data).
+               (Hdata_not_impl : forall d : data, d ⊑ • data).
 
   (* Here we parameterize over an arbitrary type of data stored within stacks. *)
   Variable dummy : data.
@@ -74,18 +74,18 @@ Section data.
     reflexivity.
   Qed.
 
-  Lemma rel_nil_not_impl : forall l, rel_mono l (nil, ? (list data)).
+  Lemma rel_nil_not_impl : forall l, rel_mono l (nil, • (list data)).
   Proof.
     induction l using exc_list_ind; cbn; constructor.
   Qed.
 
   Definition rel_enqueue (naive : list data) (opt : list data * list data) :=
     forall d, rel naive opt ->
-         rel (naive ++ d :: nil) (fst opt, ? (list data)).
+         rel (naive ++ d :: nil) (fst opt, • (list data)).
 
   (* The simple implementation of "push" preserves the relation. *)
   Lemma ir_rel_enqueue : forall d naive opt, rel_anti naive opt
-    -> rel_mono (naive ++ d :: nil) (fst opt, ? (list data)).
+    -> rel_mono (naive ++ d :: nil) (fst opt, • (list data)).
   Proof.
     unfold rel_mono; simpl; intros; subst.
     unfold rel_anti in H.

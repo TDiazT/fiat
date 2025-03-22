@@ -4,44 +4,39 @@ Import ListNotations.
 
 #[unfold_fix]
 Symbol not_implemented : forall A, A.
-Notation "?" := not_implemented.
+Notation "•" := not_implemented.
 
 Create HintDb icp.
 
 Ltac exc_eauto := eauto with icp.
 
-Symbol exc_list_ind : forall (A : Type) (P : list A -> Type) (Hnil : P nil)
-  (Hcons : forall (a : A) (l : list A), P l -> P (cons a l))
-  (Hnot_impl : P (? (list A)))
-    (l : list A), P l.
+(****************************************************)
+(*                     LIST                         *)
+(****************************************************)
+Symbol exc_list_ind : 
+  forall (A : Type) (P : list A -> Type) (Hnil : P nil)
+    (Hcons : forall (a : A) (l : list A), P l -> P (cons a l)) 
+    (Hnot_impl : P (• (list A)))
+      (l : list A), P l.
 
-Rewrite Rules exc_list_indRed :=
-  | exc_list_ind ?A ?P ?Hnil ?Hcons ?Hnot_impl nil => ?Hnil
-  | exc_list_ind ?A ?P ?Hnil ?Hcons ?Hnot_impl (cons ?a ?l) => ?Hcons ?a ?l (exc_list_ind ?A ?P ?Hnil ?Hcons ?Hnot_impl ?l)
-  | exc_list_ind ?A ?P ?Hnil ?Hcons ?Hnot_impl (? _) => ?Hnot_impl.
-
-Rewrite Rules list_red_rew :=
-  |  match @not_implemented (list ?A) as t0  return ?P with
-     | nil => _
-     | _ => _
-     end => @not_implemented (?P@{t0 := (@not_implemented (list ?A))})
-  |  match ? (list ?A) as t0  return ?P with
-     | nil => _
-     | _ => _
-     end => @not_implemented (?P@{t0 := (? (list ?A))}).
-
-Axioms
-    (noconf_unk_nil : forall {A}, ? (list A) = @nil A -> False)
-    (noconf_unk_cons : forall {A} (a : A) l, ? (list A) = cons a l -> False).
+Axioms 
+    (noconf_unk_nil : forall {A}, • (list A) = @nil A -> False)
+    (noconf_unk_cons : forall {A} (a : A) l, • (list A) = cons a l -> False).
 
 Hint Extern 0 => match goal with
-  | [ H : ? (list ?A) = @nil _ |- _ ] => apply noconf_unk_nil in H; contradiction
-    | [ H : ? (list ?A)  = cons _ _ |- _ ] => apply noconf_unk_cons in H; contradiction
-    | [ H : @nil _ = ? (list ?A) |- _ ] => symmetry in H
-    | [ H : cons _ _ = ? (list ?A) |- _ ] => symmetry in H
-    | [|- context[? (list ?A) = @nil _]] => progress intros
-    | [|- context[? (list ?A) = cons _ _]] => progress intros
+  | [ H : • (list _) = @nil _ |- _ ] => apply noconf_unk_nil in H; contradiction
+    | [ H : • (list _) = cons _ _ |- _ ] => apply noconf_unk_cons in H; contradiction
+    | [ H : @nil _ = • (list _) |- _ ] => symmetry in H
+    | [ H : cons _ _ = • (list _) |- _ ] => symmetry in H
+    | [|- context[• (list _) = @nil _]] => progress intros
+    | [|- context[• (list _) = cons _ _]] => progress intros
     end : icp.
+
+Rewrite Rules list_unk_match := 
+| match • (list ?A) as t0 return ?P with
+  | nil => _
+  | _ => _
+  end => • (?P@{t0 := (• (list ?A))}).
 
 Section ListICP.
   Context {A : Type} `{HRA : Refinable A}.
@@ -51,18 +46,18 @@ Section ListICP.
   | is_refinement_nil : nil ⊑l nil
   | is_refinement_cons : forall (a a' : A) (l1 l2 : list A),
       a ⊑ a' -> l1 ⊑l l2 -> (cons a l1) ⊑l (cons a' l2)
-  | is_refinement_unk : forall l, l ⊑l ? (list A)
+  | is_refinement_list_unk : forall l, l ⊑l (• (list A))
   where "l1 ⊑l l2" := (refinement_list l1 l2).
-
-  Hint Constructors refinement_list : icp.
+  
+  Hint Constructors refinement_list : icp.  
   Hint Constructors refinement_list : typeclass_instances.
-
-  #[export]
-    Program Instance refinableList : Refinable (list A) :=
+  
+  #[export] 
+  Program Instance refinableList : Refinable (list A) :=
     { refinement := refinement_list }.
-  Next Obligation.
+  Next Obligation.    
     unfold Relation_Definitions.transitive; intros x; induction x as [| hd tl IH |] using exc_list_ind; intros ? ?; inversion 1; subst; inversion 1; subst; exc_eauto.
-    constructor; eauto.
+    constructor; eauto. 
     etransitivity; eauto.
   Qed.
   Next Obligation.
@@ -112,7 +107,7 @@ Section ListICP.
   Hint Constructors is_complete_list : typeclass_instances.
 
   #[export]
-    Instance completeList : Complete (list A) :=
+  Instance completeList : Complete (list A) :=
     { is_complete := is_complete_list }.
 
   Lemma is_complete_app : forall l l' : list A,
@@ -161,7 +156,7 @@ Section ListICP.
   Qed.
 
   #[export]
-    Instance completeMinimalList `{@CompleteMinimal A HRA HCA} : CompleteMinimal (list A).
+  Instance completeMinimalList `{@CompleteMinimal A HRA HCA} : CompleteMinimal (list A).
   Proof with eauto with icp.
     constructor; intros l; induction l as [|? ? IH |] using exc_list_ind; inversion 1; intros l'; inversion 1; subst...
     f_equal... eapply is_complete_minimal; eauto.
@@ -180,55 +175,56 @@ End ListICP.
 #[export] Hint Resolve is_complete_rev : typeclass_instances.
 
 
-Symbol exc_prod_ind :
-  forall {A B}
-          (P : A * B -> Type)
-          (Hp : forall a b, P (a,b))
-          (Hunk : P (? (A * B)))
-          (p : A * B), P p.
+(****************************************************)
+(*                     PROD                         *)
+(****************************************************)
 
-Rewrite Rules exc_prod_ind_rew :=
-| exc_prod_ind ?P ?Hp ?Hunk (?a,?b) => ?Hp ?a ?b
-| exc_prod_ind ?P ?Hp ?Hunk (? _) => ?Hunk.
-
-Rewrite Rules prod_red_rew :=
-  |  match @not_implemented (?A * ?B) as t0  return ?P with
-     | pair _ _ => _
-     end => @not_implemented (?P@{t0 := (@not_implemented (?A * ?B))}).
+Symbol exc_prod_ind : 
+forall (A B : Type) (P : A * B -> Prop) 
+      (Hp : forall (a : A) (b : B), P (a, b))
+      (Hunk : P (• (A * B)))
+      (p:A * B), P p.    
 
 Axioms
- (noconf_unk_prod : forall {A B} (p : A * B), ? (A * B) = p -> False)
+ (noconf_unk_prod : forall {A B} (a : A) (b : B), • (A * B) = (a, b) -> False)
 .
 
-Hint Extern 0 =>
+Hint Extern 0 => 
     match goal with
-    | [H : ? (?A * ?B) = (_, _) |- _] => apply noconf_unk_prod in H; contradiction
-    | [H : (_, _) = ? (?A * ?B) |- _] => symmetry in H
-    | [|- context[? (?A * ?B) = (_, _)]] => progress intros
+    | [H : • _ = (_, _) |- _] => apply noconf_unk_prod in H; contradiction
+    | [H : (_, _) = • _ |- _] => symmetry in H
+    | [|- context[• _ = (_, _)]] => progress intros
     end : icp.
+
+Rewrite Rules prod_unk_match := 
+| match • (?A * ?B) as t0 return ?P with
+  | pair _ _ => _
+  end => not_implemented (?P@{t0 := (• (?A * ?B))}).
 
 
 Section ProdICP.
   Context {A B : Type} `{HRA : Refinable A} `{HRB : Refinable B}.
 
-  Inductive refinement_prod : A * B -> A * B -> Prop :=
-  | is_refinement_pair : forall (a1 a2 : A) (b1 b2 : B),
-      a1 ⊑ a2 -> b1 ⊑ b2 -> refinement_prod (a1, b1) (a2, b2)
-  | is_refinement_pair_not_impl : forall ab, refinement_prod ab (? (A * B)).
+  Reserved Infix "⊑p" (at level 70).
+  Inductive is_refinement_prod : A * B -> A * B -> Prop := 
+  | is_refinement_pair : forall (a1 a2 : A) (b1 b2 : B), 
+          a1 ⊑ a2 -> b1 ⊑ b2 -> (a1, b1) ⊑p (a2, b2)
+  | is_refinement_prod_unk : forall ab, ab ⊑p • (A * B)
+  where "ab1 ⊑p ab2" := (is_refinement_prod ab1 ab2).
 
 
   #[export, refine]
     Instance refinableProd : Refinable (A * B) :=
     {
-      refinement := refinement_prod
+      refinement := is_refinement_prod
     }.
   Proof with eauto with icp.
     - unfold Relation_Definitions.transitive; intros x; induction x using exc_prod_ind; intros ? ?; inversion 1; subst; inversion 1; subst; try constructor; try eapply is_transitive...
     - intros x. induction x using exc_prod_ind; constructor; apply is_reflexive.
   Defined.
 
-  Hypotheses (HAnot_impl : forall a : A, a ⊑ ? A)
-    (HBnot_impl : forall b : B, b ⊑ ? B).
+  Hypotheses (HAnot_impl : forall a : A, a ⊑ • A)
+              (HBnot_impl : forall b : B, b ⊑ • B).
 
   Lemma fst_ref : forall p p' : A * B,
       p ⊑ p' ->
@@ -282,8 +278,8 @@ Section ProdICP.
 
 End ProdICP.
 
-#[export] Hint Constructors refinement_prod : icp.
-#[export] Hint Constructors refinement_prod : typeclass_instances.
+#[export] Hint Constructors is_refinement_prod : icp.
+#[export] Hint Constructors is_refinement_prod : typeclass_instances.
 #[export] Hint Constructors is_complete_prod : icp.
 #[export] Hint Constructors is_complete_prod : typeclass_instances.
 
@@ -292,21 +288,32 @@ End ProdICP.
 #[export] Hint Resolve is_complete_fst : typeclass_instances.
 #[export] Hint Resolve is_complete_snd : typeclass_instances.
 
-Axioms
-  (noconf_unk_none : forall {A}, ? (option A) = @None A -> False)
-    (noconf_unk_some : forall {A} {a : A}, ? (option A) = Some a -> False)
+
+(****************************************************)
+(*                     OPTION                       *)
+(****************************************************)
+Rewrite Rules option_red := 
+| match • (option ?A) as t0 return ?P with
+  | None => _
+  | _ => _
+  end => • (?P@{t0 := (• (option ?A))})
 .
 
-#[export] Hint Extern 0 =>
+Axioms
+ (noconf_unk_none : forall {A}, • (option A) = @None A -> False)
+ (noconf_unk_some : forall {A} {a : A}, • (option A) = Some a -> False)
+.
+
+Hint Extern 0 =>
   match goal with
-  | [H : ? (option ?A) = None |- _] => apply noconf_unk_none in H; contradiction
-  | [H : ? (option ?A) = Some _ |- _] => apply noconf_unk_some in H; contradiction
-  | [H : None = ? (option ?A) |- _] => symmetry in H
-  | [H : Some _ = ? (option ?A) |- _] => symmetry in H
-  | [|- context[? (option ?A) = None]] => progress intros
-  | [|- context[? (option ?A) = Some _]] => progress intros
-  | [|- None <> ? (option ?A) ] => unfold not; intros
-  | [|- Some _ <> ? (option ?A) ] => unfold not; intros
+  | [H : • (option _) = None |- _] => apply noconf_unk_none in H; contradiction
+  | [H : • (option _) = Some _ |- _] => apply noconf_unk_some in H; contradiction
+  | [H : None = • (option _) |- _] => symmetry in H
+  | [H : Some _ = • (option _) |- _] => symmetry in H
+  | [|- context[• (option _) = None]] => progress intros
+  | [|- context[• (option _) = Some _]] => progress intros
+  | [|- None <> • (option _) ] => unfold not; intros
+  | [|- Some _ <> • (option _) ] => unfold not; intros
   end : icp.
 
 Section OptionICP.
@@ -316,14 +323,14 @@ Section OptionICP.
   Inductive refinementOption : option A -> option A -> Prop :=
   | refinementOption_None : None ⊑o None
   | refinementOption_Some : forall a a', a ⊑ a' -> (Some a) ⊑o (Some a')
-  | refinementOption_not_impl : forall a, a ⊑o (? (option A))
+  | refinementOption_not_impl : forall a, a ⊑o (• (option A))
   where "o1 ⊑o o2" := (refinementOption o1 o2).
 
   Hint Constructors refinementOption : icp.
   Hint Constructors refinementOption : typeclass_instances.
 
   #[export]
-    Program Instance refinableOption : Refinable (option A) :=
+  Program Instance refinableOption : Refinable (option A) :=
     { refinement := refinementOption }.
   Next Obligation with eauto with icp.
     unfold Relation_Definitions.transitive; intros [] [] [] H1 H2; try contradiction; eauto; inversion H1; subst; exc_eauto; try constructor...
@@ -344,13 +351,13 @@ Section OptionICP.
   Hint Constructors is_complete_option : typeclass_instances.
 
   #[export]
-    Instance CompleteOption : Complete (option A) :=
-    {
-      is_complete := is_complete_option
-    }.
+  Instance CompleteOption : Complete (option A) :=
+  {
+    is_complete := is_complete_option
+  }.
 
   #[export]
-    Instance CompleteMinimalOption `{@CompleteMinimal A HRA HCA} : CompleteMinimal (option A).
+  Instance CompleteMinimalOption `{@CompleteMinimal A HRA HCA} : CompleteMinimal (option A).
   Proof with eauto with icp.
     constructor; unfold_refinement; intros ?; inversion 1; subst; intros ?; inversion 1; subst...
     f_equal; apply is_complete_minimal; eauto.
