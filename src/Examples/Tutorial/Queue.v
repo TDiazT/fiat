@@ -53,31 +53,22 @@ Section data.
   Definition rel_anti (naive : list data) (opt : list data * list data) :=
     ir_anti (rel naive) opt.
 
-  Lemma list_data_refl : forall l : list data,
-      l ⊑ l.
-  Proof.
-    induction l using exc_list_ind; constructor; eauto.
-    reflexivity.
-  Qed.
+  Lemma list_data_refl : forall l : list data, l ⊑ l.
+  Proof. induction l using exc_list_ind; constructor; eauto. reflexivity. Qed.
 
   Lemma rel_implies_mono : forall naive opt,
       rel naive opt -> rel_mono naive opt.
-  Proof.
-    intros naive opt. unfold rel. intros ->.
-    simpl. unfold rel_mono. simpl.
-    apply list_data_refl.
+  Proof. 
+    intros naive opt Hrel.
+    now apply approx_mono.
   Qed.
 
   (* The appropriate initial states are related. *)
   Lemma rel_initial : rel nil (nil, nil).
-  Proof.
-    reflexivity.
-  Qed.
+  Proof. reflexivity. Qed.
 
   Lemma rel_nil_not_impl : forall l, rel_mono l (nil, • (list data)).
-  Proof.
-    induction l using exc_list_ind; cbn; constructor.
-  Qed.
+  Proof. induction l using exc_list_ind; cbn; constructor. Qed.
 
   Definition rel_enqueue (naive : list data) (opt : list data * list data) :=
     forall d, rel naive opt ->
