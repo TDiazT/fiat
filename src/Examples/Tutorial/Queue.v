@@ -1,4 +1,5 @@
 Require Import Tutorial.
+From Coq Require Import Lia.
 
 Section data.
   Variable data : Set.
@@ -56,12 +57,8 @@ Section data.
   Lemma list_data_refl : forall l : list data, l ⊑ l.
   Proof. induction l using exc_list_ind; constructor; eauto. reflexivity. Qed.
 
-  Lemma rel_implies_mono : forall naive opt,
-      rel naive opt -> rel_mono naive opt.
-  Proof. 
-    intros naive opt Hrel.
-    now apply approx_mono.
-  Qed.
+  Lemma rel_implies_mono : forall naive opt, rel naive opt -> rel_mono naive opt.
+  Proof. intros; now apply approx_mono. Qed.
 
   (* The appropriate initial states are related. *)
   Lemma rel_initial : rel nil (nil, nil).
@@ -78,12 +75,8 @@ Section data.
   Lemma ir_rel_enqueue : forall d naive opt, rel_anti naive opt
     -> rel_mono (naive ++ d :: nil) (fst opt, • (list data)).
   Proof.
-    unfold rel_mono; simpl; intros; subst.
-    unfold rel_anti in H.
-    simpl in H.
-    destruct H as [_ Heq]. rewrite <- Heq.
-    cbn in *.
-    rewrite <- app_assoc.
+    unfold rel_mono; simpl; intros d naive opt [_ <-].
+    cbn in *. rewrite <- app_assoc.
     apply app_ref.
     - reflexivity.
     - constructor.
@@ -123,8 +116,8 @@ Section data.
     unfold rel_anti; destruct naive; simpl; intros.
     destruct (snd opt); simpl in *; intuition.
     apply (f_equal (@List.length _)) in H2.
-    repeat rewrite app_length in H2; simpl in H2.
-    omega.
+    repeat rewrite length_app in H2; simpl in H2.
+    lia.
     auto.
   Qed.
 
@@ -185,15 +178,15 @@ Section data.
   Definition SigRCods (A : refinableType) := (ARef A).(refinement).
 
   Instance sigRCodsReflexive A : Reflexive (SigRCods A).
-   typeclasses eauto.
+    typeclasses eauto.
   Qed.
 
   Instance sigRCodsTransitive A : Transitive (SigRCods A).
-   typeclasses eauto.
+    typeclasses eauto.
   Qed.
 
   Instance refineProd_SigRCods_Reflexive {A} `{Refinable A} {B} : Reflexive (@refineProd SigRCods (↑A) B).
-  typeclasses eauto.
+    typeclasses eauto.
   Qed.
 
   Lemma complete_list_cons :
@@ -257,9 +250,7 @@ Section data.
         * cbv beta.
           done.
 
-
-      +
-        erewrite eta_naive_fst with (naive := r_o) by eauto.
+      + erewrite eta_naive_fst with (naive := r_o) by eauto.
         monad_simpl.
         refineEqOldSimpl.
         pick_by rel_fast_rep.
@@ -280,7 +271,6 @@ Section data.
       + unfold refineMethod, refineMethod'; intros; subst.
         refineEqProdSimpl. pick. monad_simpl. done.
         higher_order_reflexivity.
-
   Defined.
 
   (* We can now extract a standlone Gallina term for this ADT. *)
