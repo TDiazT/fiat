@@ -1,4 +1,4 @@
-Require Export Fiat.Examples.Tutorial.RefinementInstances.
+Require Export Fiat.RefinementInstances.
 
 Require Export Coq.Lists.List.
 
