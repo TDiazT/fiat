@@ -15,8 +15,8 @@ src/ADTRefinement.v
 src/Common.v
 src/Computation.v
 src/ComputationalEnsembles.v
-src/Refinement.v
-src/RefinementInstances.v
+src/IncRease.v
+src/IncReaseInstances.v
 src/FiniteSetADTs.v
 src/ADT/ADTHide.v
 src/ADT/ADTSig.v

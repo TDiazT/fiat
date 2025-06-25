@@ -1,6 +1,6 @@
 Require Export Fiat.Common Fiat.Computation.
 
-Require Export Fiat.Refinement.
+Require Export Fiat.IncRease.
 
 Record refinableType := {
     A : Type ;
