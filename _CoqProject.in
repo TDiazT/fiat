@@ -4,6 +4,7 @@
 -I src/Common/Tactics
 -I .
 -arg -w -arg unsupported-attributes
+-arg -allow-rewrite-rules
 Bedrock/Memory.v
 Bedrock/Nomega.v
 Bedrock/Word.v
@@ -14,6 +15,8 @@ src/ADTRefinement.v
 src/Common.v
 src/Computation.v
 src/ComputationalEnsembles.v
+src/IncRease.v
+src/IncReaseInstances.v
 src/FiniteSetADTs.v
 src/ADT/ADTHide.v
 src/ADT/ADTSig.v

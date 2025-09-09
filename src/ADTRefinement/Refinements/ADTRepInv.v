@@ -72,22 +72,22 @@ Section RepInv.
       Hopefully we can include additional information into the honing
       tactics to avoid reproving invariant preservation.  *)
 
-  Lemma refineADT_Build_ADT_RepInv
-        Sig
-  : forall constr constr',
-      (forall idx, @refineConstructor _ _ repInvAbsR
-                                  (ConstructorDom Sig idx)
-                                  (constr idx) (constr' idx))
-      -> forall meth meth',
-           (forall idx, @refineMethod _ _ repInvAbsR
-                                        (fst (MethodDomCod Sig idx))
-                                        (snd (MethodDomCod Sig idx))
-                                        (meth idx) (meth' idx))
-           -> refineADT (@Build_ADT Sig rep constr meth)
-                        (@Build_ADT Sig rep constr' meth').
-  Proof.
-    intros; eapply refineADT_Build_ADT_Rep; eauto; reflexivity.
-  Qed.
+  (* Lemma refineADT_Build_ADT_RepInv *)
+  (*       Sig *)
+  (* : forall constr constr', *)
+  (*     (forall idx, @refineConstructor _ _ repInvAbsR *)
+  (*                                 (ConstructorDom Sig idx) *)
+  (*                                 (constr idx) (constr' idx)) *)
+  (*     -> forall meth meth', *)
+  (*          (forall idx, @refineMethod _ _ repInvAbsR *)
+  (*                                       (fst (MethodDomCod Sig idx)) *)
+  (*                                       (snd (MethodDomCod Sig idx)) *)
+  (*                                       (meth idx) (meth' idx)) *)
+  (*          -> refineADT (@Build_ADT Sig rep constr meth) *)
+  (*                       (@Build_ADT Sig rep constr' meth'). *)
+  (* Proof. *)
+  (*   intros; eapply refineADT_Build_ADT_Rep; eauto; reflexivity. *)
+  (* Qed. *)
 
   Lemma refine_pick_repInvAbsR :
     forall r_o, repInv r_o ->

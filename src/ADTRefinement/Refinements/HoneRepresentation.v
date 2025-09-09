@@ -14,8 +14,11 @@ Section HoneRepresentation.
   Variable newRep : Type. (* The new representation type. *)
 
   (* The abstraction relation between old and new representations. *)
-  Variable AbsR : oldRep -> newRep -> Prop.
-  Local Infix "≃" := (AbsR) (at level 70).
+  Variable AbsR_mono : oldRep -> newRep -> Prop.
+  Variable AbsR_anti : oldRep -> newRep -> Prop.
+
+  Local Notation "ro ⪯ rn" := (AbsR_mono ro rn) (at level 70).
+  Local Notation "ro ⪰ rn" := (AbsR_anti ro rn) (at level 70).
 
   (* When switching representations, we can always build a default
      implementation (computation?) for the methods of an ADT by
@@ -23,7 +26,7 @@ Section HoneRepresentation.
 
   Fixpoint absMethod'
              (dom : list Type)
-             (cod : option Type)
+             (cod : option refinableType)
     : (oldRep -> methodType' oldRep dom cod)
       -> newRep -> (methodType' newRep dom cod) :=
     match dom return
@@ -38,16 +41,16 @@ Section HoneRepresentation.
       | Some cod' =>
         fun oldMethod nr =>
           {nr' | forall or,
-              or ≃ nr ->
+              or ⪰ nr ->
               exists or',
                 (oldMethod or) ↝ or' /\
-                fst or' ≃ fst nr' /\ snd or' = snd nr'}%comp
+                fst or' ⪯ fst nr' /\ snd or' = snd nr'}%comp
       | None =>
         fun oldMethod nr =>
           {nr' | forall or,
-              or ≃ nr ->
+              or ⪰ nr ->
               exists or',
-                (oldMethod or) ↝ or' /\ or' ≃ nr'}%comp
+                (oldMethod or) ↝ or' /\ or' ⪯ nr'}%comp
       end
       | cons d dom' =>
       fun oldMethod nr t =>
@@ -56,31 +59,57 @@ Section HoneRepresentation.
 
   Definition absMethod
              (dom : list Type)
-             (cod : option Type)
+             (cod : option refinableType)
              (oldMethod : methodType oldRep dom cod)
     : methodType newRep dom cod :=
     absMethod' dom cod oldMethod.
 
   Lemma refine_absMethod
         (dom : list Type)
-        (cod : option Type)
+        (cod : option refinableType)
+        RCods
+        {RCodsRefl : forall A, Reflexive (RCods A)}
         (oldMethod : methodType oldRep dom cod)
-  : @refineMethod oldRep newRep AbsR _ _
+  : @refineMethod oldRep newRep AbsR_mono AbsR_anti RCods _ _
                    oldMethod
                    (absMethod oldMethod).
   Proof.
     induction dom.
     - simpl in *; unfold refineMethod, refineMethod',
                   absMethod, absMethod', refine; intros;
-      destruct cod; intros; computes_to_inv.
+        destruct cod; [unfold refineProd, refineR | unfold refineEq]; intros; computes_to_inv.
       + destruct (H0 _ H) as [or' [Comp_or [AbsR_or'' eq_or''] ] ].
+        exists v. repeat split.
         repeat computes_to_econstructor; eauto.
         destruct v; simpl in *; subst; econstructor.
+        reflexivity.
       + destruct (H0 _ H) as [or' [Comp_or AbsR_or'' ] ].
         repeat computes_to_econstructor; eauto.
     - intro; simpl; intros.
       eapply (IHdom (fun or => oldMethod or d)); eauto.
   Qed.
+
+  (* Lemma refine_absMethod *)
+  (*       (dom : list Type) *)
+  (*       (cod : option Type) *)
+  (*       (oldMethod : methodType oldRep dom cod) *)
+  (* : @refineMethod oldRep newRep AbsR _ _ (RCod_eq cod) *)
+  (*                  oldMethod *)
+  (*                  (absMethod oldMethod). *)
+  (* Proof. *)
+  (*   induction dom. *)
+  (*   - simpl in *; unfold refineMethod, refineMethod', *)
+  (*                 absMethod, absMethod', refine; intros; *)
+  (*       destruct cod; [unfold refineProd | unfold refineEq]; intros; computes_to_inv. *)
+  (*     + destruct (H0 _ H) as [or' [Comp_or [AbsR_or'' eq_or''] ] ]. *)
+  (*       exists v. repeat split. *)
+  (*       repeat computes_to_econstructor; eauto. *)
+  (*       destruct v; simpl in *; subst; econstructor. *)
+  (*     + destruct (H0 _ H) as [or' [Comp_or AbsR_or'' ] ]. *)
+  (*       repeat computes_to_econstructor; eauto. *)
+  (*   - intro; simpl; intros. *)
+  (*     eapply (IHdom (fun or => oldMethod or d)); eauto. *)
+  (* Qed. *)
 
   Hint Resolve refine_absMethod.
 
@@ -96,7 +125,7 @@ Section HoneRepresentation.
     | nil =>
       fun oldConstr =>
       {nr | exists or', oldConstr ↝ or' /\
-                        or' ≃ nr }%comp
+                        or' ⪯ nr }%comp
     | cons d dom' =>
       fun oldConstr t =>
         @absConstructor dom' (oldConstr t)
@@ -105,11 +134,11 @@ Section HoneRepresentation.
   Lemma refine_absConstructor
         (dom : list Type)
         (oldConstr : constructorType oldRep dom)
-  : @refineConstructor oldRep newRep AbsR _ oldConstr
+  : @refineConstructor oldRep newRep AbsR_mono _ oldConstr
                     (absConstructor oldConstr).
   Proof.
     induction dom; simpl in *.
-    - unfold refineConstructor, absConstructor, refine; intros.
+    - unfold refineConstructor, absConstructor, refine; unfold refineEq; intros.
       computes_to_inv; eauto.
     - intros; eapply IHdom.
   Qed.
@@ -120,12 +149,16 @@ Section HoneRepresentation.
      implementations provided by [absMutatorMethod] and [absObserverMethod]. *)
   Lemma refineADT_Build_ADT_Rep_default
         Sig
+        RCods
+        {RCodsRefl : forall A, Reflexive (RCods A)}
         oldConstrs oldMeths :
     refineADT
+      RCods
       (@Build_ADT Sig oldRep oldConstrs oldMeths)
       (@Build_ADT Sig newRep
                   (fun idx => absConstructor (oldConstrs idx))
-                  (fun idx => absMethod (oldMeths idx))).
+                  (fun idx => absMethod (oldMeths idx)))
+      .
   Proof.
     eapply refineADT_Build_ADT_Rep; eauto.
   Qed.

@@ -9,9 +9,12 @@ Section MethodRefinement.
   Variables oldRep newRep : Type.
 
   (** Abstraction Relation *)
-  Variable AbsR : oldRep -> newRep -> Prop.
+  Variable AbsR_mono : oldRep -> newRep -> Prop.
+  Variable AbsR_anti : oldRep -> newRep -> Prop.
+  Variable R : forall {T : refinableType}, relation T.
 
-  Notation "ro ≃ rn" := (AbsR ro rn) (at level 70).
+  Notation "ro ⪯ rn" := (AbsR_mono ro rn) (at level 70).
+  Notation "ro ⪰ rn" := (AbsR_anti ro rn) (at level 70).
 
   (** Refinement of a constructor: the computation produced by
    a constructor [newConstructor] should be a refinement
@@ -39,8 +42,8 @@ Section MethodRefinement.
           -> Prop
     with
     | nil => fun oldConstructor newConstructor =>
-               refine (r_o' <- oldConstructor;
-                       {r_n | r_o' ≃ r_n})
+               refineEq (r_o' <- oldConstructor;
+                       {r_n | r_o' ⪯ r_n})
                       (newConstructor)
     | cons D dom' =>
       fun oldConstructor newConstructor =>
@@ -61,7 +64,7 @@ Section MethodRefinement.
           -> Prop
     with
     | nil => fun oldConstructor newConstructor =>
-               refine oldConstructor newConstructor
+               refineEq oldConstructor newConstructor
     | cons D dom' =>
       fun oldConstructor newConstructor =>
         forall d : D,
@@ -87,9 +90,14 @@ Section MethodRefinement.
                    new method
 >>  *)
 
+
+  Definition refineProd {A : refinableType} {X}
+    := refineR  (fun (v : X * A) (v' : X * A) => fst v = fst v' /\ R (snd v) (snd v')).
+
+
   Fixpoint refineMethod'
            {dom : list Type}
-           {cod : option Type}
+           {cod : option refinableType}
     : methodType' oldRep dom cod
       -> methodType' newRep dom cod
       -> Prop :=
@@ -99,22 +107,22 @@ Section MethodRefinement.
           -> Prop
     with
     | nil =>
-      match cod return
-            methodType' oldRep [] cod
-            -> methodType' newRep [] cod
-            -> Prop
+      match cod as c return
+             methodType' oldRep [] c
+             -> methodType' newRep [] c
+             -> Prop
       with
       | Some cod' =>
         fun oldMethod newMethod =>
-          refine (r_o' <- oldMethod;
-                  r_n' <- {r_n | fst r_o' ≃ r_n};
-                  ret (r_n', snd r_o'))
-                 newMethod
-      | _ =>
+          refineProd (r_o' <- oldMethod;
+                        r_n' <- {r_n | fst r_o' ⪯ r_n};
+                        ret (r_n', snd r_o'))
+            newMethod
+      | None =>
         fun oldMethod newMethod =>
-          refine (r_o' <- oldMethod;
-                  {r_n | r_o' ≃ r_n})
-                 newMethod
+          refineEq (r_o' <- oldMethod;
+                        {r_n | r_o' ⪯ r_n})
+            newMethod
       end
     | cons D dom' =>
       fun oldMethod newMethod =>
@@ -125,16 +133,16 @@ Section MethodRefinement.
 
   Definition refineMethod
              {dom : list Type}
-             {cod : option Type}
+             {cod : option refinableType}
              (oldMethod : methodType oldRep dom cod)
              (newMethod : methodType newRep dom cod)
     := forall r_o r_n,
-      r_o ≃ r_n ->
+      r_o ⪰ r_n ->
       @refineMethod' dom cod (oldMethod r_o) (newMethod r_n).
 
     Fixpoint refineMethod_eq'
            {dom : list Type}
-           {cod : option Type}
+           {cod : option refinableType}
     : methodType' oldRep dom cod
       -> methodType' oldRep dom cod
       -> Prop :=
@@ -151,10 +159,10 @@ Section MethodRefinement.
       with
       | Some cod' =>
         fun oldMethod newMethod =>
-          refine oldMethod newMethod
+          refineEq oldMethod newMethod
       | _ =>
         fun oldMethod newMethod =>
-          refine oldMethod newMethod
+          refineEq oldMethod newMethod
       end
     | cons D dom' =>
       fun oldMethod newMethod =>
@@ -165,7 +173,7 @@ Section MethodRefinement.
 
   Definition refineMethod_eq
              {dom : list Type}
-             {cod : option Type}
+             {cod : option refinableType}
              (oldMethod : methodType oldRep dom cod)
              (newMethod : methodType oldRep dom cod)
     := forall r_o,
@@ -173,20 +181,41 @@ Section MethodRefinement.
 
 End MethodRefinement.
 
-Record refineADT {Sig} (A B : ADT Sig) :=
+Instance refineProd_Reflexive A B RCods `{forall A, Reflexive (RCods A)} : Reflexive (@refineProd RCods A B).
+Proof.
+  unfold refineProd, refineR.
+  econstructor. repeat split; eauto.
+  reflexivity.
+Qed.
+
+Instance refineProd_Transitive A B RCods `{forall A, Transitive (RCods A)} : Transitive (@refineProd RCods A B).
+Proof.
+  intros x y z.
+  unfold refineProd, refineR.
+  intros Hxy Hyz v'' Hzv''.
+  destruct (Hyz _ Hzv'') as [v' [Hyv' [Heq' HRv']]].
+  destruct (Hxy _ Hyv') as [v [Hxv [Heq HRv]]].
+  exists v. repeat split; eauto. rewrite Heq; eauto.
+  eapply H; eauto.
+Qed.
+
+
+Record refineADT RCods {Sig} (A B : ADT Sig) :=
   refinesADT {
-      AbsR : _;
+      AbsR_mono : _;
+      AbsR_anti : _;
       ADTRefinementPreservesConstructors
       : forall idx : ConstructorIndex Sig,
           @refineConstructor
-            (Rep A) (Rep B) AbsR
+            (Rep A) (Rep B) AbsR_mono
             (ConstructorDom Sig idx)
             (Constructors A idx)
             (Constructors B idx);
       ADTRefinementPreservesMethods
       : forall idx : MethodIndex Sig,
           @refineMethod
-            (Rep A) (Rep B) AbsR
+            (Rep A) (Rep B) AbsR_mono AbsR_anti
+            RCods
             (fst (MethodDomCod Sig idx))
             (snd (MethodDomCod Sig idx))
             (Methods A idx)
@@ -195,4 +224,4 @@ Record refineADT {Sig} (A B : ADT Sig) :=
     into [refine], so that we can rewrite with lemmas about [refine]. *)
 
 
-Notation "ro ≃ rn" := (@AbsR _ _ _ _ ro rn) (at level 70).
+(* Notation "ro ≃ rn" := (@AbsR_mono _ _ _ _ ro rn) (at level 70). *)

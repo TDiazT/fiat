@@ -11,10 +11,10 @@ Section CacheADT.
 
   Definition CacheSig : ADTSig :=
     ADTsignature {
-        "EmptyCache"  : unit → rep,
-        "AddKey" : rep × (Key * Value) → rep × bool,
-        "UpdateKey" : rep × (Key * (Value -> Value)) → rep × bool,
-        "LookupKey"   : rep × Key → rep × (option Value)
+        Constructor "EmptyCache"  : unit -> rep,
+        Method "AddKey" : rep * (Key * Value) -> rep * bool,
+        Method "UpdateKey" : rep * (Key * (Value -> Value)) -> rep * bool,
+        Method "LookupKey"   : rep * Key -> rep * (option Value)
   }.
 
   Definition EnsembleInsert  {A} (a : A) (ens : Ensemble A) (a' : A)
@@ -75,7 +75,7 @@ Section CacheADT.
   : Prop := exists v, r (k, v).
 
   Definition CacheSpec : ADT CacheSig :=
-    ADTRep (Ensemble (Key * Value)) {
+    Def ADT (Ensemble (Key * Value)) {
         const "EmptyCache" (_ : unit) : rep :=
           ret (fun _ => False),
         meth "AddKey" (r : rep, kv : Key * Value) : bool :=

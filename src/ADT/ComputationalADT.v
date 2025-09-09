@@ -17,9 +17,9 @@ Fixpoint cConstructorType (rep : Type) (dom : list Type)
     end.
 
 (** Type of a deterministic method. *)
-Fixpoint cMethodType' (rep : Type)         
+Fixpoint cMethodType' (rep : Type)
          (dom : list Type)
-         (cod : option Type)
+         (cod : option refinableType)
   : Type :=
   match dom with
   | nil =>
@@ -32,7 +32,7 @@ Fixpoint cMethodType' (rep : Type)
   end.
 Definition cMethodType (rep : Type)
            (dom : list Type)
-           (cod : option Type) : Type :=
+           (cod : option refinableType) : Type :=
   rep -> cMethodType' rep dom cod.
 
 (** Interface of a ADT implementation *)
@@ -84,7 +84,7 @@ Fixpoint LiftcConstructor
 Fixpoint LiftcMethod'
          (rep : Type)
          (dom : list Type)
-         (cod : option Type)
+         (cod : option refinableType)
   : cMethodType' rep dom cod
     -> methodType' rep dom cod :=
   match dom return
@@ -101,7 +101,7 @@ Fixpoint LiftcMethod'
   end.
 
 Definition LiftcMethod
-           (rep : Type) (dom : list Type) (cod : option Type)
+           (rep : Type) (dom : list Type) (cod : option refinableType)
            (cMethod : cMethodType rep dom cod)
   : methodType rep dom cod
   := fun r => LiftcMethod' rep dom cod (cMethod r).
